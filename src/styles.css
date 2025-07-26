@@ -1,0 +1,30 @@
+@media print {
+  /* Esconde elementos ao imprimir */
+  .header, .tabs, .logoutButton {
+    display: none !important;
+  }
+
+  /* Ajuste de layout para impressão */
+  .container {
+    padding: 10px;
+    font-size: 12px;
+  }
+
+  .card {
+    width: 180px;
+    font-size: 12px;
+  }
+
+  .logo {
+    width: 100px;
+  }
+
+  .input, .button {
+    font-size: 12px;
+    padding: 10px 20px;
+  }
+
+  .cardTransfer {
+    font-size: 10px;
+  }
+}
