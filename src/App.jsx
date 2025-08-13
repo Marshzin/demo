@@ -544,6 +544,9 @@ function MainApp({ onLogout, isAdmin }) {
                     <p style={{ margin: "2px 0" }}>
                       <strong>Referência:</strong> {tr.referencia}
                     </p>
+                    <p style={{ margin: "2px 0" }}>
+                      <strong>Destino:</strong> {tr.shoppingDestino}
+                    </p>
                     <p
                       style={{
                         fontSize: 12,
