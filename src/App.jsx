@@ -278,7 +278,7 @@ function MainApp({ onLogout, isAdmin }) {
     }
   };
 
-  // IMPRESSÃO: etiquetas em grid de 2 colunas por linha
+  // IMPRESSÃO: etiquetas em grid de 2 colunas por linha (inclui Destino)
   const imprimir = () => {
     const janela = window.open("", "_blank");
     if (janela) {
@@ -323,6 +323,11 @@ function MainApp({ onLogout, isAdmin }) {
             .referencia {
               font-size: 15px;
               color: #454545;
+              margin-bottom: 6px;
+            }
+            .destino {
+              font-size: 14px;
+              color: #333;
               margin-bottom: 15px;
             }
             .barcode {
@@ -351,6 +356,7 @@ function MainApp({ onLogout, isAdmin }) {
           <div class="card-impressao">
             <div class="nome-item">${tr.nomeItem}</div>
             <div class="referencia"><strong>Referência:</strong> ${tr.referencia}</div>
+            <div class="destino"><strong>Destino:</strong> ${tr.lojaDestino}</div>
             <div class="barcode">
               <svg id="barcode-${idx}"></svg>
               <div class="codigo-barra-num">${tr.codigoBarra}</div>
@@ -545,7 +551,7 @@ function MainApp({ onLogout, isAdmin }) {
                       <strong>Referência:</strong> {tr.referencia}
                     </p>
                     <p style={{ margin: "2px 0" }}>
-                      <strong>Destino:</strong> {tr.shoppingDestino}
+                      <strong>Destino:</strong> {tr.lojaDestino}
                     </p>
                     <p
                       style={{
