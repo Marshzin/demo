@@ -47,6 +47,7 @@ body {
 .table {
   width: 100%;
   border-collapse: collapse;
+  margin-top: 15px;
 }
 
 .table th, .table td {
@@ -59,7 +60,7 @@ body {
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  margin-left: 10px;
+  margin: 10px 0;
 }
 
 .btn-blue {
