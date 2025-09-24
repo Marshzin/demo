@@ -176,7 +176,11 @@ function MainApp({ onLogout }) {
         const lista = dados.map((linha, i) => {
           // Object.values(linha)[0] = coluna A, Object.values(linha)[1] = coluna B
           const codigoProduto = String(Object.values(linha)[0] || "").trim();
-          const codigoBarra   = String(Object.values(linha)[1] || "").trim();
+          // Remove o |, espaços e outros caracteres indesejados
+          const codigoBarra   = String(Object.values(linha)[1] || "")
+            .replace("|", "")
+            .replace(/\s+$/, "") // remove espaços finais
+            .trim();
           const descricao = String(linha["Descrição Completa"] || linha["Descrição"] || "Sem descrição").trim();
           const referencia = String(linha["Referência"] || "-").trim();
           const setor = String(linha["Setor"] || "").trim();
