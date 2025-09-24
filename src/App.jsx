@@ -159,18 +159,10 @@ const buttonStyle = {
 function MainApp({ onLogout, isAdmin, lojaUsuario }) {
   const [abaAtiva, setAbaAtiva] = useState("itens");
   const [itens, setItens] = useState([]);
-  const [transferencias, setTransferencias] = useState(() => {
-    const dados = localStorage.getItem("transferenciasDemocrata");
-    return dados ? JSON.parse(dados) : [];
-  });
-
   const [codigoDigitado, setCodigoDigitado] = useState("");
   const [itensEncontrados, setItensEncontrados] = useState([]);
-  const [itemSelecionado, setItemSelecionado] = useState(null);
-  const [lojaDestino, setLojaDestino] = useState(lojas[0]);
-  const [vendedor, setVendedor] = useState("");
   const [lojaSolicitante, setLojaSolicitante] = useState(lojas[0]);
-  const [nomeSolicitante, setNomeSolicitante] = useState(""); // novo campo
+  const [nomeSolicitante, setNomeSolicitante] = useState("");
 
   useEffect(() => {
     fetch("/itens.xls")
@@ -183,21 +175,31 @@ function MainApp({ onLogout, isAdmin, lojaUsuario }) {
           alert("Nenhum dado encontrado na planilha.");
           return;
         }
+        // Corrigido: coluna B é a segunda coluna, que no XLSX é a segunda propriedade
+        // Mas para garantir, vamos pegar o campo 'Código de Barras' (ou similar), e também a coluna 'B' se ela existir
         const lista = dados.map((linha, i) => {
-          const codigoProduto = String(linha["Código Produto"] || "").trim();
-          const codigosBarras = (String(linha["Códigos de Barras"] || "") || "")
-            .split("|")
-            .map((c) => c.trim())
-            .filter((c) => c.length > 0);
-          const codigoBarra = codigosBarras.length > 0 ? codigosBarras[codigosBarras.length - 1] : codigoProduto;
-          const descricao = String(linha["Descrição Completa"] || "Sem descrição").trim();
+          // Tenta pegar por nome ou pela coluna B
+          const codigoBarra =
+            linha["Código de Barras"] ||
+            linha["Códigos de Barras"] ||
+            linha["Código Produto"] ||
+            linha["B"] ||
+            Object.values(linha)[1] || // segunda coluna do excel
+            "";
+          const codigoProduto =
+            linha["Código Produto"] ||
+            linha["Código"] ||
+            linha["A"] ||
+            Object.values(linha)[0] ||
+            "";
+          const descricao = String(linha["Descrição Completa"] || linha["Descrição"] || "Sem descrição").trim();
           const referencia = String(linha["Referência"] || "-").trim();
           const setor = String(linha["Setor"] || "").trim();
 
           return {
             id: `${codigoProduto}-${i}`,
-            codigo: codigoProduto,
-            codigoBarra,
+            codigo: String(codigoProduto).trim(),
+            codigoBarra: String(codigoBarra).trim(),
             nome: descricao,
             referencia,
             setor,
@@ -213,11 +215,7 @@ function MainApp({ onLogout, isAdmin, lojaUsuario }) {
       });
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem("transferenciasDemocrata", JSON.stringify(transferencias));
-  }, [transferencias]);
-
-  // Bipar: busca e seleciona automaticamente o primeiro
+  // Bipar: busca e seleciona pelo código ou código de barras (agora coluna B)
   const buscarCodigo = (codigo) => {
     if (!codigo.trim()) {
       alert("Digite o código do produto, código de barras.");
@@ -233,92 +231,10 @@ function MainApp({ onLogout, isAdmin, lojaUsuario }) {
     if (encontrados.length === 0) {
       alert("Nenhum item encontrado.");
       setItensEncontrados([]);
-      setItemSelecionado(null);
       return;
     }
     setItensEncontrados(encontrados);
-    setItemSelecionado(encontrados[0]); // Seleciona automaticamente o primeiro encontrado
   };
-
-  const transferirItem = () => {
-    if (!itemSelecionado) return alert("Selecione um item para transferir.");
-    if (itemSelecionado.loja === lojaDestino) return alert("O item já está no destinatário.");
-    if (!vendedor.trim()) return alert("Digite o nome do vendedor.");
-
-    setItens((oldItens) =>
-      oldItens.map((item) =>
-        item.id === itemSelecionado.id ? { ...item, loja: lojaDestino } : item
-      )
-    );
-
-    const novaTransferencia = {
-      id: Date.now().toString() + "-" + Math.random(),
-      itemId: itemSelecionado.id,
-      codigo: itemSelecionado.codigo,
-      codigoBarra: itemSelecionado.codigoBarra,
-      nomeItem: itemSelecionado.nome,
-      referencia: itemSelecionado.referencia,
-      lojaOrigem: itemSelecionado.loja,
-      lojaDestino: lojaDestino,
-      lojaSolicitante: lojaSolicitante,
-      nomeSolicitante: nomeSolicitante,
-      vendedor: vendedor,
-      tamanho: itemSelecionado.tamanho,
-      data: new Date().toISOString(),
-    };
-
-    setTransferencias((old) => [novaTransferencia, ...old]);
-    alert(`Transferência de ${itemSelecionado.nome} de ${itemSelecionado.loja} para ${lojaDestino} (Loja Solicitante: ${lojaSolicitante}${nomeSolicitante ? " - " + nomeSolicitante : ""}) realizada por ${vendedor}!`);
-    setItemSelecionado(null);
-    setCodigoDigitado("");
-    setVendedor("");
-    setNomeSolicitante("");
-  };
-
-  const excluirTransferencias = () => {
-    if (window.confirm("Tem certeza que deseja excluir todos os itens transferidos?")) {
-      setTransferencias([]);
-      localStorage.setItem("transferenciasDemocrata", JSON.stringify([]));
-      alert("Todos os itens transferidos foram excluídos.");
-    }
-  };
-
-  const imprimir = () => {
-    const janela = window.open("", "_blank");
-    if (janela) {
-      janela.document.write("<html><head><title>Imprimir</title></head><body>");
-      transferencias.forEach((tr) => {
-        const svgElement = document.querySelector(`svg[data-value='${tr.codigoBarra}']`);
-        const svgHtml = svgElement ? svgElement.parentNode.innerHTML : "";
-        janela.document.write(`<div style='margin-bottom:30px;text-align:center;'>
-          <p><strong>${tr.nomeItem}</strong></p>
-          <p>Referência: ${tr.referencia}</p>
-          <p>Código: ${tr.codigo}</p>
-          <p>Loja Solicitante: ${tr.lojaSolicitante}${tr.nomeSolicitante ? " - " + tr.nomeSolicitante : ""}</p>
-          <p>Vendedor: ${tr.vendedor}</p>
-          <div>${svgHtml}</div>
-        </div>`);
-      });
-      janela.document.write("</body></html>");
-      janela.document.close();
-      janela.print();
-    }
-  };
-
-  const formatarData = (iso) => {
-    const dt = new Date(iso);
-    return dt.toLocaleString("pt-BR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const transferenciasRecebidas = transferencias.filter(
-    (tr) => tr.lojaDestino === lojaUsuario
-  );
 
   return (
     <div style={styles.container}>
@@ -337,185 +253,72 @@ function MainApp({ onLogout, isAdmin, lojaUsuario }) {
         >
           Transferência
         </button>
-        <button
-          style={abaAtiva === "recebidas" ? styles.tabActive : styles.tab}
-          onClick={() => setAbaAtiva("recebidas")}
-        >
-          Recebidas ({lojaUsuario})
-        </button>
-        {isAdmin && (
-          <button
-            style={abaAtiva === "admin" ? styles.tabActive : styles.tab}
-            onClick={() => setAbaAtiva("admin")}
-          >
-            Administrador
-          </button>
-        )}
       </nav>
 
       <main style={styles.section}>
-        {abaAtiva === "itens" && (
-          <>
-            <h2 style={{ color: "#1a1a1a", marginBottom: 20 }}>
-              Buscar e Transferir Item
-            </h2>
-            <div style={styles.buscaContainer}>
-              <input
-                type="text"
-                placeholder="Digite código, código de barras."
-                value={codigoDigitado}
-                onChange={e => setCodigoDigitado(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === "Enter") buscarCodigo(codigoDigitado);
-                }}
-                style={styles.input}
-                autoFocus
-              />
-              <button onClick={() => buscarCodigo(codigoDigitado)} style={styles.button}>
-                Buscar
-              </button>
-            </div>
-            {/* Loja Solicitante e nome logo abaixo do bipar */}
-            <div style={{ marginTop: 16 }}>
-              <label style={{ fontWeight: "600", display: "block", marginBottom: 6 }}>
-                Loja Solicitante:
-              </label>
-              <select
-                value={lojaSolicitante}
-                onChange={e => setLojaSolicitante(e.target.value)}
-                style={styles.select}
-              >
-                {lojas.map((l) => (
-                  <option key={l} value={l}>
-                    {l}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="text"
-                placeholder="Nome (não obrigatório)"
-                value={nomeSolicitante}
-                onChange={e => setNomeSolicitante(e.target.value)}
-                style={{ ...styles.input, marginTop: 8 }}
-              />
-            </div>
-            {itensEncontrados.length > 0 && (
-              <div style={styles.cardContainer}>
-                <h3>Itens encontrados:</h3>
-                <div style={styles.itensList}>
-                  {itensEncontrados.map((item) => (
-                    <div
-                      key={item.id}
-                      onClick={() => setItemSelecionado(item)}
-                      style={{
-                        ...styles.card,
-                        borderColor:
-                          item.id === itemSelecionado?.id ? "#4a90e2" : "#ddd",
-                        boxShadow:
-                          item.id === itemSelecionado?.id
-                            ? "0 4px 12px rgba(74, 144, 226, 0.4)"
-                            : "0 2px 5px rgba(0,0,0,0.1)",
-                      }}
-                    >
-                      <div style={styles.cardInfo}>
-                        <h4 style={styles.cardTitle}>{item.nome}</h4>
-                        <p>
-                          <strong>Cód. Barras:</strong> {item.codigoBarra}
-                        </p>
-                        <p>
-                          <strong>Referência:</strong> {item.referencia}
-                        </p>
-                      </div>
-                      <div style={styles.barcodeContainer}>
-                        <Barcode value={item.codigoBarra} height={50} width={2} />
-                      </div>
-                    </div>
-                  ))}
+        {/* Busca + solicitante apenas */}
+        <div style={styles.buscaContainer}>
+          <input
+            type="text"
+            placeholder="Digite código, código de barras."
+            value={codigoDigitado}
+            onChange={e => setCodigoDigitado(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === "Enter") buscarCodigo(codigoDigitado);
+            }}
+            style={styles.input}
+            autoFocus
+          />
+          <button onClick={() => buscarCodigo(codigoDigitado)} style={styles.button}>
+            Buscar
+          </button>
+        </div>
+        <div style={{ marginTop: 16 }}>
+          <label style={{ fontWeight: "600", display: "block", marginBottom: 6 }}>
+            Loja Solicitante:
+          </label>
+          <select
+            value={lojaSolicitante}
+            onChange={e => setLojaSolicitante(e.target.value)}
+            style={styles.select}
+          >
+            {lojas.map((l) => (
+              <option key={l} value={l}>
+                {l}
+              </option>
+            ))}
+          </select>
+          <input
+            type="text"
+            placeholder="Nome (não obrigatório)"
+            value={nomeSolicitante}
+            onChange={e => setNomeSolicitante(e.target.value)}
+            style={{ ...styles.input, marginTop: 8 }}
+          />
+        </div>
+        {/* Cards dos itens encontrados */}
+        {itensEncontrados.length > 0 && (
+          <div style={styles.cardContainer}>
+            <h3>Itens encontrados:</h3>
+            <div style={styles.itensList}>
+              {itensEncontrados.map((item) => (
+                <div key={item.id} style={styles.card}>
+                  <div style={styles.cardInfo}>
+                    <h4 style={styles.cardTitle}>{item.nome}</h4>
+                    <p>
+                      <strong>Cód. Barras:</strong> {item.codigoBarra}
+                    </p>
+                    <p>
+                      <strong>Referência:</strong> {item.referencia}
+                    </p>
+                  </div>
+                  <div style={styles.barcodeContainer}>
+                    <Barcode value={item.codigoBarra} height={50} width={2} />
+                  </div>
                 </div>
-              </div>
-            )}
-
-            {itemSelecionado && (
-              <div style={styles.cardSelected}>
-                <label style={{ fontWeight: "600", marginTop: 12, display: "block" }}>
-                  Destinatário:
-                </label>
-                <select
-                  value={lojaDestino}
-                  onChange={(e) => setLojaDestino(e.target.value)}
-                  style={styles.select}
-                >
-                  {lojas.map((l) => (
-                    <option key={l} value={l}>
-                      {l}
-                    </option>
-                  ))}
-                </select>
-
-                <label style={{ fontWeight: "600", marginTop: 12, display: "block" }}>
-                  Nome do Vendedor:
-                </label>
-                <input
-                  type="text"
-                  placeholder="Digite o nome do vendedor"
-                  value={vendedor}
-                  onChange={(e) => setVendedor(e.target.value)}
-                  style={styles.input}
-                />
-
-                <button onClick={transferirItem} style={{ ...styles.button, marginTop: 20 }}>
-                  Transferir
-                </button>
-              </div>
-            )}
-          </>
-        )}
-
-        {abaAtiva === "recebidas" && (
-          <>
-            <h2 style={{ color: "#1a1a1a", marginBottom: 20 }}>
-              Transferências recebidas - {lojaUsuario}
-            </h2>
-            {transferenciasRecebidas.length === 0 ? (
-              <p style={{ color: "#666" }}>Nenhuma transferência recebida.</p>
-            ) : (
-              transferenciasRecebidas.map((tr) => (
-                <div key={tr.id} style={styles.cardTransfer}>
-                  <p>
-                    <strong>Remetente:</strong> {tr.lojaOrigem}
-                  </p>
-                  <p>
-                    <strong>Destinatário:</strong> {tr.lojaDestino}
-                  </p>
-                  <p>
-                    <strong>Loja Solicitante:</strong> {tr.lojaSolicitante}
-                    {tr.nomeSolicitante ? ` - ${tr.nomeSolicitante}` : ""}
-                  </p>
-                  <p>
-                    <strong>Vendedor:</strong> {tr.vendedor}
-                  </p>
-                  <p style={{ fontSize: 12, color: "#888" }}>
-                    Em {formatarData(tr.data)}
-                  </p>
-                  <Barcode value={tr.codigoBarra} height={40} width={1.5} />
-                </div>
-              ))
-            )}
-            <button onClick={imprimir} style={styles.button}>
-              Imprimir Códigos de Barras
-            </button>
-          </>
-        )}
-
-        {abaAtiva === "admin" && isAdmin && (
-          <>
-            <h2 style={{ color: "#1a1a1a", marginBottom: 20 }}>
-              Área Administrativa
-            </h2>
-            <button onClick={excluirTransferencias} style={styles.button}>
-              Excluir todos os itens transferidos
-            </button>
-          </>
+              ))}
+            </div>
+          </div>
         )}
       </main>
     </div>
@@ -629,12 +432,11 @@ const styles = {
     border: "2px solid #ddd",
     borderRadius: 12,
     padding: 16,
-    cursor: "pointer",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    transition: "all 0.25s ease",
     backgroundColor: "#fafafa",
+    boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
   },
   cardInfo: {
     flex: 1,
@@ -650,14 +452,6 @@ const styles = {
   barcodeContainer: {
     minWidth: 110,
   },
-  cardSelected: {
-    marginTop: 26,
-    backgroundColor: "#f3f9ff",
-    padding: 20,
-    borderRadius: 12,
-    boxShadow: "0 4px 20px rgba(0,123,255,0.1)",
-    maxWidth: 520,
-  },
   select: {
     marginTop: 6,
     padding: 12,
@@ -665,13 +459,5 @@ const styles = {
     borderRadius: 10,
     border: "1.5px solid #ccc",
     width: "100%",
-  },
-  cardTransfer: {
-    backgroundColor: "#fefefe",
-    padding: 20,
-    borderRadius: 12,
-    boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
-    marginBottom: 18,
-    fontSize: 15,
   },
 };
