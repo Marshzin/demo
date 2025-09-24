@@ -14,11 +14,11 @@ const logoUrl = "/logo.jpeg";
 
 // Login para cada loja
 const lojasLogin = {
-  NovoShopping: "Novo Shopping",
-  RibeiraoShopping: "RibeiraoShopping",
-  DomPedro: "Shopping Dom Pedro",
-  Iguatemi: "Shopping Iguatemi",
   admin: "Administrador",
+  novoshopping: "Novo Shopping",
+  ribeiraoshopping: "RibeiraoShopping",
+  dompedro: "Shopping Dom Pedro",
+  iguatemi: "Shopping Iguatemi",
 };
 
 export default function App() {
@@ -58,16 +58,9 @@ export default function App() {
           setIsAdmin(true);
           setLojaUsuario("");
           localStorage.removeItem("lojaUsuario");
-        } else if (usuario === "democrata" && senha === "12345") {
-          localStorage.setItem("logado", true);
-          localStorage.setItem("isAdmin", false);
-          setLogado(true);
-          setIsAdmin(false);
-          setLojaUsuario("");
-          localStorage.removeItem("lojaUsuario");
         } else if (
           lojasLogin[usuario] &&
-          (senha === "1234" || senha === "1234")
+          senha === "1234"
         ) {
           localStorage.setItem("logado", true);
           localStorage.setItem("isAdmin", false);
@@ -85,12 +78,11 @@ export default function App() {
 
 function Login({ onLogin }) {
   const usuarios = [
-    { value: "democrata", label: "Democrata" },
-    { value: "NovoShopping", label: "Novo Shopping (Alternativo)" },
-    { value: "RibeiraoShopping", label: "RibeiraoShopping (Alternativo)" },
-    { value: "DomPedro", label: "Shopping Dom Pedro (Alternativo)" },
-    { value: "Iguatemi", label: "Shopping Iguatemi (Alternativo)" },
     { value: "admin", label: "Administrador" },
+    { value: "novoshopping", label: "Novo Shopping" },
+    { value: "ribeiraoshopping", label: "RibeiraoShopping" },
+    { value: "dompedro", label: "Shopping Dom Pedro" },
+    { value: "iguatemi", label: "Shopping Iguatemi" },
   ];
 
   const [usuario, setUsuario] = useState(usuarios[0].value);
@@ -270,7 +262,7 @@ function MainApp({ onLogout, isAdmin, lojaUsuario }) {
       codigoBarra: itemSelecionado.codigoBarra,
       nomeItem: itemSelecionado.nome,
       referencia: itemSelecionado.referencia,
-      lojaOrigem: itemSelecionado.loja, // Armazenando a loja de origem corretamente
+      lojaOrigem: itemSelecionado.loja,
       lojaDestino: lojaDestino,
       vendedor: vendedor,
       tamanho: itemSelecionado.tamanho,
