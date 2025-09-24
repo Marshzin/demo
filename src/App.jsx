@@ -104,7 +104,7 @@ function Login({ onLogin }) {
         display: "flex",
         flexDirection: "column",
         gap: 10,
-        textAlign: "center",
+        alignItems: "center", // Centraliza a logo e o conteúdo
         fontFamily: "'Segoe UI', sans-serif",
       }}
     >
@@ -170,6 +170,7 @@ function MainApp({ onLogout, isAdmin, lojaUsuario }) {
   const [itemSelecionado, setItemSelecionado] = useState(null);
   const [lojaDestino, setLojaDestino] = useState(lojas[0]);
   const [vendedor, setVendedor] = useState("");
+  const [lojaSolicitante, setLojaSolicitante] = useState(lojas[0]); // Novo campo
 
   useEffect(() => {
     fetch("/itens.xls")
@@ -248,7 +249,6 @@ function MainApp({ onLogout, isAdmin, lojaUsuario }) {
     if (itemSelecionado.loja === lojaDestino) return alert("O item já está no destinatário.");
     if (!vendedor.trim()) return alert("Digite o nome do vendedor.");
 
-    // Atualiza a loja do item apenas após a transferência
     setItens((oldItens) =>
       oldItens.map((item) =>
         item.id === itemSelecionado.id ? { ...item, loja: lojaDestino } : item
@@ -264,13 +264,14 @@ function MainApp({ onLogout, isAdmin, lojaUsuario }) {
       referencia: itemSelecionado.referencia,
       lojaOrigem: itemSelecionado.loja,
       lojaDestino: lojaDestino,
+      lojaSolicitante: lojaSolicitante,
       vendedor: vendedor,
       tamanho: itemSelecionado.tamanho,
       data: new Date().toISOString(),
     };
 
     setTransferencias((old) => [novaTransferencia, ...old]);
-    alert(`Transferência de ${itemSelecionado.nome} de ${itemSelecionado.loja} para ${lojaDestino} realizada por ${vendedor}!`);
+    alert(`Transferência de ${itemSelecionado.nome} de ${itemSelecionado.loja} para ${lojaDestino} (Solicitante: ${lojaSolicitante}) realizada por ${vendedor}!`);
     setItemSelecionado(null);
     setCodigoDigitado("");
     setVendedor("");
@@ -295,6 +296,7 @@ function MainApp({ onLogout, isAdmin, lojaUsuario }) {
           <p><strong>${tr.nomeItem}</strong></p>
           <p>Referência: ${tr.referencia}</p>
           <p>Código: ${tr.codigo}</p>
+          <p>Solicitante: ${tr.lojaSolicitante}</p>
           <p>Vendedor: ${tr.vendedor}</p>
           <div>${svgHtml}</div>
         </div>`);
@@ -316,7 +318,6 @@ function MainApp({ onLogout, isAdmin, lojaUsuario }) {
     });
   };
 
-  // Filtra transferências recebidas pela loja logada
   const transferenciasRecebidas = transferencias.filter(
     (tr) => tr.lojaDestino === lojaUsuario
   );
@@ -413,9 +414,22 @@ function MainApp({ onLogout, isAdmin, lojaUsuario }) {
 
             {itemSelecionado && (
               <div style={styles.cardSelected}>
-                <label
-                  style={{ fontWeight: "600", marginTop: 12, display: "block" }}
+                <label style={{ fontWeight: "600", marginTop: 12, display: "block" }}>
+                  Solicitante:
+                </label>
+                <select
+                  value={lojaSolicitante}
+                  onChange={(e) => setLojaSolicitante(e.target.value)}
+                  style={styles.select}
                 >
+                  {lojas.map((l) => (
+                    <option key={l} value={l}>
+                      {l}
+                    </option>
+                  ))}
+                </select>
+
+                <label style={{ fontWeight: "600", marginTop: 12, display: "block" }}>
                   Destinatário:
                 </label>
                 <select
@@ -430,9 +444,7 @@ function MainApp({ onLogout, isAdmin, lojaUsuario }) {
                   ))}
                 </select>
 
-                <label
-                  style={{ fontWeight: "600", marginTop: 12, display: "block" }}
-                >
+                <label style={{ fontWeight: "600", marginTop: 12, display: "block" }}>
                   Nome do Vendedor:
                 </label>
                 <input
@@ -466,6 +478,9 @@ function MainApp({ onLogout, isAdmin, lojaUsuario }) {
                   </p>
                   <p>
                     <strong>Destinatário:</strong> {tr.lojaDestino}
+                  </p>
+                  <p>
+                    <strong>Solicitante:</strong> {tr.lojaSolicitante}
                   </p>
                   <p>
                     <strong>Vendedor:</strong> {tr.vendedor}
