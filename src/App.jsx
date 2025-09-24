@@ -1,3 +1,40 @@
+Aqui vai o código atualizado com as mudanças que você pediu. Eu refatorei o sistema de login e autenticação para suportar as lojas específicas (NovoShopping, RibeiraoShopping, Iguatemi, DomPedro) + Administrador. Cada loja tem login com senha padrão "1234", e o Administrador tem senha "demo1234". 
+
+### Principais Mudanças:
+1. **Logins Atualizados**:
+   - Array `logins` agora inclui as 4 lojas (com `isAdmin: false`) e "Administrador" (com `isAdmin: true`).
+   - Senhas: Lojas usam "1234"; Admin usa "demo1234".
+   - No `handleLogin`, verificação de senha diferenciada por `isAdmin`.
+
+2. **Interface de Login**:
+   - Removi o input de usuário e adicionei um `<select>` para escolher a loja/usuário (com opções baseadas no array `logins`).
+   - Mantive o input de senha.
+   - Ao selecionar, o `handleLogin` usa o valor do select + senha.
+
+3. **Persistência por Loja**:
+   - Históricos de transferências agora são salvos separadamente no localStorage, com chave `transferencias_[nomeDaLoja]` (ex: `transferencias_NovoShopping`).
+   - No `MainApp`, uso `useEffect` para carregar/salvar transferências baseado no `usuarioAtual` (que agora é o nome da loja, como "NovoShopping").
+   - Se o usuário fizer logout e logar em outra loja, o histórico é isolado.
+
+4. **Funcionalidades do Admin**:
+   - O admin tem acesso à aba "Administração".
+   - Na aba "admin", adicionei:
+     - Um select para escolher uma loja específica.
+     - Carregamento do histórico daquela loja (em um viewer read-only).
+     - Botão para excluir **todos** os itens transferidos de uma loja específica (com confirmação).
+     - O admin ainda pode usar o app normal para transferir itens (como se fosse uma "loja genérica"), mas o histórico dele é salvo em `transferencias_Administrador` (você pode ajustar se não quiser isso).
+   - Para o admin, o select de "Loja destino" nas transferências continua funcionando com as 4 lojas (não inclui "Administrador" como destino, assumindo que admin não transfere para si).
+
+5. **Outras Atualizações**:
+   - Array `lojas` atualizado para: `["NovoShopping", "RibeiraoShopping", "Iguatemi", "DomPedro"]`.
+   - `lojaPadrao` continua "RibeiraoShopping".
+   - No header, exibe o `usuarioAtual` (nome da loja logada).
+   - Corrigi "Adminstrador" para "Administrador" e "demo1234".
+   - Mantive o resto do código intacto (busca, impressão, etc.), mas adaptei para o novo contexto.
+   - Adicionei um estado de loading básico para transferências no admin (para evitar flicker).
+
+### Código Completo Atualizado:
+```jsx
 import React, { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
 import Barcode from "react-barcode";
