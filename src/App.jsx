@@ -157,12 +157,9 @@ const buttonStyle = {
 };
 
 function MainApp({ onLogout, isAdmin, lojaUsuario }) {
-  const [abaAtiva, setAbaAtiva] = useState("itens");
   const [itens, setItens] = useState([]);
   const [codigoDigitado, setCodigoDigitado] = useState("");
   const [itensEncontrados, setItensEncontrados] = useState([]);
-  const [lojaSolicitante, setLojaSolicitante] = useState(lojas[0]);
-  const [nomeSolicitante, setNomeSolicitante] = useState("");
 
   useEffect(() => {
     fetch("/itens.xls")
@@ -176,15 +173,13 @@ function MainApp({ onLogout, isAdmin, lojaUsuario }) {
           return;
         }
         // Corrigido: coluna B é a segunda coluna, que no XLSX é a segunda propriedade
-        // Mas para garantir, vamos pegar o campo 'Código de Barras' (ou similar), e também a coluna 'B' se ela existir
         const lista = dados.map((linha, i) => {
-          // Tenta pegar por nome ou pela coluna B
           const codigoBarra =
             linha["Código de Barras"] ||
             linha["Códigos de Barras"] ||
-            linha["Código Produto"] ||
             linha["B"] ||
-            Object.values(linha)[1] || // segunda coluna do excel
+            Object.values(linha)[1] ||
+            linha["Código Produto"] ||
             "";
           const codigoProduto =
             linha["Código Produto"] ||
@@ -215,7 +210,7 @@ function MainApp({ onLogout, isAdmin, lojaUsuario }) {
       });
   }, []);
 
-  // Bipar: busca e seleciona pelo código ou código de barras (agora coluna B)
+  // Busca pelo código (produto), código de barras (coluna B), ou referência
   const buscarCodigo = (codigo) => {
     if (!codigo.trim()) {
       alert("Digite o código do produto, código de barras.");
@@ -246,17 +241,7 @@ function MainApp({ onLogout, isAdmin, lojaUsuario }) {
         </button>
       </header>
 
-      <nav style={styles.tabs}>
-        <button
-          style={abaAtiva === "itens" ? styles.tabActive : styles.tab}
-          onClick={() => setAbaAtiva("itens")}
-        >
-          Transferência
-        </button>
-      </nav>
-
       <main style={styles.section}>
-        {/* Busca + solicitante apenas */}
         <div style={styles.buscaContainer}>
           <input
             type="text"
@@ -273,30 +258,6 @@ function MainApp({ onLogout, isAdmin, lojaUsuario }) {
             Buscar
           </button>
         </div>
-        <div style={{ marginTop: 16 }}>
-          <label style={{ fontWeight: "600", display: "block", marginBottom: 6 }}>
-            Loja Solicitante:
-          </label>
-          <select
-            value={lojaSolicitante}
-            onChange={e => setLojaSolicitante(e.target.value)}
-            style={styles.select}
-          >
-            {lojas.map((l) => (
-              <option key={l} value={l}>
-                {l}
-              </option>
-            ))}
-          </select>
-          <input
-            type="text"
-            placeholder="Nome (não obrigatório)"
-            value={nomeSolicitante}
-            onChange={e => setNomeSolicitante(e.target.value)}
-            style={{ ...styles.input, marginTop: 8 }}
-          />
-        </div>
-        {/* Cards dos itens encontrados */}
         {itensEncontrados.length > 0 && (
           <div style={styles.cardContainer}>
             <h3>Itens encontrados:</h3>
@@ -365,33 +326,6 @@ const styles = {
     boxShadow: "0 4px 10px rgba(224,62,47,0.4)",
     transition: "background-color 0.3s ease",
   },
-  tabs: {
-    display: "flex",
-    gap: 24,
-    marginBottom: 30,
-    borderBottom: "2px solid #eee",
-  },
-  tab: {
-    padding: "12px 32px",
-    backgroundColor: "transparent",
-    border: "none",
-    borderBottom: "3px solid transparent",
-    fontWeight: "600",
-    fontSize: 16,
-    cursor: "pointer",
-    color: "#555",
-    transition: "border-color 0.3s ease",
-  },
-  tabActive: {
-    padding: "12px 32px",
-    backgroundColor: "transparent",
-    border: "none",
-    borderBottom: "3px solid #007BFF",
-    fontWeight: "700",
-    fontSize: 16,
-    cursor: "pointer",
-    color: "#007BFF",
-  },
   section: {
     minHeight: 400,
   },
@@ -451,13 +385,5 @@ const styles = {
   },
   barcodeContainer: {
     minWidth: 110,
-  },
-  select: {
-    marginTop: 6,
-    padding: 12,
-    fontSize: 16,
-    borderRadius: 10,
-    border: "1.5px solid #ccc",
-    width: "100%",
   },
 };
