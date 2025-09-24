@@ -85,16 +85,12 @@ export default function App() {
 
 function Login({ onLogin }) {
   const usuarios = [
-    { value: "admin", label: "Administrador" },
     { value: "democrata", label: "Democrata" },
-    { value: "novoshopping", label: "Novo Shopping" },
     { value: "NovoShopping", label: "Novo Shopping (Alternativo)" },
-    { value: "ribeiraoshopping", label: "RibeiraoShopping" },
     { value: "RibeiraoShopping", label: "RibeiraoShopping (Alternativo)" },
-    { value: "dompedro", label: "Shopping Dom Pedro" },
     { value: "DomPedro", label: "Shopping Dom Pedro (Alternativo)" },
-    { value: "iguatemi", label: "Shopping Iguatemi" },
     { value: "Iguatemi", label: "Shopping Iguatemi (Alternativo)" },
+    { value: "admin", label: "Administrador" },
   ];
 
   const [usuario, setUsuario] = useState(usuarios[0].value);
