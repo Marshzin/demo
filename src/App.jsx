@@ -39,10 +39,10 @@ export default function App() {
     const usuarioEncontrado = logins.find(
       (u) => u.usuario.toLowerCase() === usuario.toLowerCase()
     );
-    const senhaCorreta = usuarioEncontrado.isAdmin ? senha === senhaAdmin : senha === senhaPadraoLojas;
+    const senhaCorreta = usuarioEncontrado?.isAdmin ? senha === senhaAdmin : senha === senhaPadraoLojas;
     if (usuarioEncontrado && senhaCorreta) {
-      localStorage.setItem("logado", true);
-      localStorage.setItem("isAdmin", usuarioEncontrado.isAdmin);
+      localStorage.setItem("logado", "true");
+      localStorage.setItem("isAdmin", usuarioEncontrado.isAdmin.toString());
       localStorage.setItem("usuarioAtual", usuarioEncontrado.loja);
       setLogado(true);
       setIsAdmin(usuarioEncontrado.isAdmin);
@@ -76,7 +76,7 @@ function Login({ onLogin }) {
   const [usuarioSelecionado, setUsuarioSelecionado] = useState("NovoShopping");
   const [senha, setSenha] = useState("");
 
-  const handleLogin = () => {
+  const handleSubmit = () => {
     onLogin(usuarioSelecionado, senha);
   };
 
@@ -102,14 +102,15 @@ function Login({ onLogin }) {
           value={senha}
           onChange={(e) => setSenha(e.target.value)}
           style={styles.input}
+          onKeyPress={(e) => e.key === "Enter" && handleSubmit()}
         />
       </div>
-      <button onClick={handleLogin} style={styles.loginButton}>
+      <button onClick={handleSubmit} style={styles.loginButton}>
         Entrar
       </button>
       <div style={{ marginTop: 28, fontSize: 13, color: "#999" }}>
         <div>Senhas:</div>
-        <ul style={{ margin: 0, padding: 0, listStyle: "none", color: "#666" }}>
+        <ul style={{ margin: 0, paddingLeft: "20px", color: "#666" }}>
           <li>Lojas: 1234</li>
           <li>Administrador: demo1234</li>
         </ul>
@@ -147,7 +148,10 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
 
   useEffect(() => {
     fetch("/itens.xls")
-      .then((res) => res.arrayBuffer())
+      .then((res) => {
+        if (!res.ok) throw new Error("Arquivo não encontrado");
+        return res.arrayBuffer();
+      })
       .then((data) => {
         const workbook = XLSX.read(data, { type: "array" });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -182,7 +186,8 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
 
         setItens(lista);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error(err);
         alert("Erro ao carregar itens.xls. Verifique o arquivo na pasta public/");
       });
   }, []);
@@ -216,7 +221,7 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
   const transferirItemAuto = (item) => {
     if (!item) return;
     const novaTransferencia = {
-      id: Date.now().toString() + "-" + Math.random(),
+      id: Date.now().toString() + "-" + Math.random().toString(36).substr(2, 9),
       itemId: item.id,
       codigo: item.codigo,
       codigoBarra: item.codigoBarra,
@@ -268,7 +273,7 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
     if (!itemSelecionado) return alert("Selecione um item para transferir.");
 
     const novaTransferencia = {
-      id: Date.now().toString() + "-" + Math.random(),
+      id: Date.now().toString() + "-" + Math.random().toString(36).substr(2, 9),
       itemId: itemSelecionado.id,
       codigo: itemSelecionado.codigo,
       codigoBarra: itemSelecionado.codigoBarra,
@@ -282,11 +287,11 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
     alert("Transferência Realizada!!");
     setItemSelecionado(null);
     setCodigoDigitado("");
-    setLojaDestino(lojas[1]); // sempre volta para RibeiraoShopping
+    setLojaDestino(lojaPadrao); // Volta para loja padrão
     setItensEncontrados([]);
   };
 
-  // Função para excluir transferências da loja logada (para não-admin)
+  // Função para excluir transferências da loja logada (disponível para todos, mas admin usa a aba separada)
   const excluirTransferenciasLojaLogada = () => {
     if (
       window.confirm(
@@ -299,7 +304,7 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
     }
   };
 
-  // Estados para admin: gerenciar outras lojas
+  // Estados para admin
   const [lojaAdminSelecionada, setLojaAdminSelecionada] = useState(lojas[0]);
   const [transferenciasAdmin, setTransferenciasAdmin] = useState([]);
   const [loadingAdmin, setLoadingAdmin] = useState(false);
@@ -320,83 +325,33 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
       const key = `transferencias_${loja}`;
       localStorage.setItem(key, JSON.stringify([]));
       alert(`Histórico de ${loja} excluído.`);
-      // Recarregar o histórico atualizado
       carregarHistoricoAdmin(loja);
     }
   };
 
-  // IMPRESSÃO: etiquetas em grid de 2 colunas por linha (inclui Destino)
-  const imprimir = (transferenciasToPrint = transferencias) => {
+  // Função de impressão genérica (pode ser usada para qualquer lista de transferências)
+  const imprimir = (transferenciasToPrint = transferencias, titulo = "Imprimir") => {
     const janela = window.open("", "_blank");
     if (janela) {
       janela.document.write(`
         <html>
-        <head>
-          <title>Imprimir</title>
-          <style>
-            body {
-              font-family: 'Segoe UI', Arial, sans-serif;
-              background: #f5f7fa;
-              padding: 18px;
-              text-align: left;
-            }
-            .grid-impressao {
-              display: grid;
-              grid-template-columns: repeat(2, 1fr);
-              gap: 24px;
-              margin-bottom: 30px;
-            }
-            .card-impressao {
-              background: #fff;
-              border: 2.5px solid #4a90e2;
-              border-radius: 10px;
-              box-shadow: 0 2px 8px rgba(0,0,0,0.10);
-              padding: 15px 18px;
-              vertical-align: top;
-              text-align: left;
-              width: 340px;
-              margin: 0 auto;
-              display: flex;
-              flex-direction: column;
-              justify-content: flex-start;
-            }
-            .nome-item {
-              font-size: 18px;
-              color: #0F3D57;
-              font-weight: 700;
-              margin-bottom: 10px;
-              word-break: break-word;
-            }
-            .referencia {
-              font-size: 15px;
-              color: #454545;
-              margin-bottom: 6px;
-            }
-            .destino {
-              font-size: 14px;
-              color: #333;
-              margin-bottom: 15px;
-            }
-            .barcode {
-              margin: 10px 0 5px 0;
-              text-align: center;
-            }
-            .codigo-barra-num {
-              font-size: 15px;
-              letter-spacing: 1.2px;
-              font-family: monospace;
-              margin-top: 8px;
-              color: #0F3D57;
-              font-weight: 600;
-            }
-            @media print {
-              body { background: #fff; }
-              .card-impressao { page-break-inside: avoid; }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="grid-impressao">
+          <head>
+            <title>${titulo}</title>
+            <style>
+              body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f7fa; padding: 18px; text-align: left; }
+              .grid-impressao { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; margin-bottom: 30px; }
+              .card-impressao { background: #fff; border: 2.5px solid #4a90e2; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.10); padding: 15px 18px; vertical-align: top; text-align: left; width: 340px; margin: 0 auto; display: flex; flex-direction: column; justify-content: flex-start; }
+              .nome-item { font-size: 18px; color: #0F3D57; font-weight: 700; margin-bottom: 10px; word-break: break-word; }
+              .referencia { font-size: 15px; color: #454545; margin-bottom: 6px; }
+              .destino { font-size: 14px; color: #333; margin-bottom: 15px; }
+              .barcode { margin: 10px 0 5px 0; text-align: center; }
+              .codigo-barra-num { font-size: 15px; letter-spacing: 1.2px; font-family: monospace; margin-top: 8px; color: #0F3D57; font-weight: 600; }
+              @media print { body { background: #fff; } .card-impressao { page-break-inside: avoid; } }
+              @media print and (max-width: 600px) { .grid-impressao { grid-template-columns: 1fr; } }
+            </style>
+          </head>
+          <body>
+            <div class="grid-impressao">
       `);
       transferenciasToPrint.forEach((tr, idx) => {
         janela.document.write(`
@@ -412,11 +367,48 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
         `);
       });
       janela.document.write(`
-          </div>
-        <script src="https://cdn.jsdelivr.net/npm/jsbarcode/dist/JsBarcode.all.min.js"></script>
-        <script>
-          function renderBarcodes() {
-            var dados = ${JSON.stringify(transferenciasToPrint)};
-            dados.forEach(function(tr, idx){
-              JsBarcode(
-                document.getElementById("barcode-" + idx),
+            </div>
+            <script src="https://cdn.jsdelivr.net/npm/jsbarcode/dist/JsBarcode.all.min.js"></script>
+            <script>
+              function renderBarcodes() {
+                var dados = ${JSON.stringify(transferenciasToPrint)};
+                dados.forEach(function(tr, idx) {
+                  JsBarcode(document.getElementById("barcode-" + idx), tr.codigoBarra, { height: 38, width: 1.6, fontSize: 13, margin: 0, displayValue: false });
+                });
+                setTimeout(() => window.print(), 500);
+                setTimeout(() => window.close(), 2000); // Fecha após imprimir
+              }
+              if (window.JsBarcode) {
+                renderBarcodes();
+              } else {
+                window.onload = renderBarcodes;
+              }
+            </script>
+          </body>
+        </html>
+      `);
+      janela.document.close();
+    }
+  };
+
+  const formatarData = (iso) => {
+    const dt = new Date(iso);
+    return dt.toLocaleString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const historicoFiltrado = transferencias;
+
+  return (
+    <div style={styles.container}>
+      <header style={styles.header}>
+        <img src={logoUrl} alt="Logo" style={styles.logo} />
+        <h1 style={styles.title}>
+          Democrata - {usuarioAtual} - Transferência por Código ou Referência
+        </h1>
+        <button onClick
