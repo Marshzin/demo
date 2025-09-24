@@ -14,16 +14,11 @@ const logoUrl = "/logo.jpeg";
 
 // Login para cada loja
 const lojasLogin = {
-  admin: "Administrador",
-  democrata: "Democrata",
-  novoshopping: "Novo Shopping",
   NovoShopping: "Novo Shopping",
-  ribeiraoshopping: "RibeiraoShopping",
   RibeiraoShopping: "RibeiraoShopping",
-  dompedro: "Shopping Dom Pedro",
   DomPedro: "Shopping Dom Pedro",
-  iguatemi: "Shopping Iguatemi",
   Iguatemi: "Shopping Iguatemi",
+  admin: "Administrador",
 };
 
 export default function App() {
@@ -56,7 +51,7 @@ export default function App() {
   ) : (
     <Login
       onLogin={(usuario, senha) => {
-        if (usuario === "admin" && senha === "12345") {
+        if (usuario === "admin" && senha === "demo123") {
           localStorage.setItem("logado", true);
           localStorage.setItem("isAdmin", true);
           setLogado(true);
