@@ -122,6 +122,7 @@ function Login({ onLogin }) {
 function MainApp({ onLogout, isAdmin, usuarioAtual }) {
   const [abaAtiva, setAbaAtiva] = useState("itens");
   const [itens, setItens] = useState([]);
+  const [loadingItens, setLoadingItens] = useState(true);
   const [transferencias, setTransferencias] = useState([]);
   const [codigoDigitado, setCodigoDigitado] = useState("");
   const [itensEncontrados, setItensEncontrados] = useState([]);
@@ -147,6 +148,7 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
   }, [transferencias, usuarioAtual, transferenciasKey]);
 
   useEffect(() => {
+    setLoadingItens(true);
     fetch("/itens.xls")
       .then((res) => {
         if (!res.ok) throw new Error("Arquivo não encontrado");
@@ -189,7 +191,8 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
       .catch((err) => {
         console.error(err);
         alert("Erro ao carregar itens.xls. Verifique o arquivo na pasta public/");
-      });
+      })
+      .finally(() => setLoadingItens(false));
   }, []);
 
   // Transferência automática ao bipar
@@ -287,11 +290,11 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
     alert("Transferência Realizada!!");
     setItemSelecionado(null);
     setCodigoDigitado("");
-    setLojaDestino(lojaPadrao); // Volta para loja padrão
+    setLojaDestino(lojaPadrao);
     setItensEncontrados([]);
   };
 
-  // Função para excluir transferências da loja logada (disponível para todos, mas admin usa a aba separada)
+  // Excluir transferências da loja logada
   const excluirTransferenciasLojaLogada = () => {
     if (
       window.confirm(
@@ -309,7 +312,6 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
   const [transferenciasAdmin, setTransferenciasAdmin] = useState([]);
   const [loadingAdmin, setLoadingAdmin] = useState(false);
 
-  // Carregar histórico de uma loja específica (para admin)
   const carregarHistoricoAdmin = (loja) => {
     setLoadingAdmin(true);
     const key = `transferencias_${loja}`;
@@ -319,7 +321,6 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
     setLoadingAdmin(false);
   };
 
-  // Excluir histórico de uma loja específica (para admin)
   const excluirTransferenciasAdmin = (loja) => {
     if (window.confirm(`Excluir todos os itens transferidos de ${loja}?`)) {
       const key = `transferencias_${loja}`;
@@ -329,7 +330,6 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
     }
   };
 
-  // Função de impressão genérica (pode ser usada para qualquer lista de transferências)
   const imprimir = (transferenciasToPrint = transferencias, titulo = "Imprimir") => {
     const janela = window.open("", "_blank");
     if (janela) {
@@ -376,7 +376,7 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
                   JsBarcode(document.getElementById("barcode-" + idx), tr.codigoBarra, { height: 38, width: 1.6, fontSize: 13, margin: 0, displayValue: false });
                 });
                 setTimeout(() => window.print(), 500);
-                setTimeout(() => window.close(), 2000); // Fecha após imprimir
+                setTimeout(() => window.close(), 2000);
               }
               if (window.JsBarcode) {
                 renderBarcodes();
@@ -411,4 +411,24 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
         <h1 style={styles.title}>
           Democrata - {usuarioAtual} - Transferência por Código ou Referência
         </h1>
-        <button onClick
+        <button onClick={onLogout} style={styles.logoutButton}>
+          Sair
+        </button>
+      </header>
+
+      <nav style={styles.tabs}>
+        <button
+          style={abaAtiva === "itens" ? styles.tabActive : styles.tab}
+          onClick={() => setAbaAtiva("itens")}
+        >
+          Itens cadastrados
+        </button>
+        <button
+          style={abaAtiva === "transferidos" ? styles.tabActive : styles.tab}
+          onClick={() => setAbaAtiva("transferidos")}
+        >
+          Itens transferidos
+        </button>
+        {isAdmin && (
+          <button
+            style={abaAtiva === "admin"
