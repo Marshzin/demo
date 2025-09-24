@@ -156,7 +156,7 @@ const buttonStyle = {
   marginTop: 10,
 };
 
-function MainApp({ onLogout, isAdmin, lojaUsuario }) {
+function MainApp({ onLogout }) {
   const [itens, setItens] = useState([]);
   const [codigoDigitado, setCodigoDigitado] = useState("");
   const [itensEncontrados, setItensEncontrados] = useState([]);
@@ -172,29 +172,19 @@ function MainApp({ onLogout, isAdmin, lojaUsuario }) {
           alert("Nenhum dado encontrado na planilha.");
           return;
         }
-        // Corrigido: coluna B é a segunda coluna, que no XLSX é a segunda propriedade
+        // Coluna A: código, Coluna B: código de barras
         const lista = dados.map((linha, i) => {
-          const codigoBarra =
-            linha["Código de Barras"] ||
-            linha["Códigos de Barras"] ||
-            linha["B"] ||
-            Object.values(linha)[1] ||
-            linha["Código Produto"] ||
-            "";
-          const codigoProduto =
-            linha["Código Produto"] ||
-            linha["Código"] ||
-            linha["A"] ||
-            Object.values(linha)[0] ||
-            "";
+          // Object.values(linha)[0] = coluna A, Object.values(linha)[1] = coluna B
+          const codigoProduto = String(Object.values(linha)[0] || "").trim();
+          const codigoBarra   = String(Object.values(linha)[1] || "").trim();
           const descricao = String(linha["Descrição Completa"] || linha["Descrição"] || "Sem descrição").trim();
           const referencia = String(linha["Referência"] || "-").trim();
           const setor = String(linha["Setor"] || "").trim();
 
           return {
             id: `${codigoProduto}-${i}`,
-            codigo: String(codigoProduto).trim(),
-            codigoBarra: String(codigoBarra).trim(),
+            codigo: codigoProduto,
+            codigoBarra: codigoBarra,
             nome: descricao,
             referencia,
             setor,
@@ -210,10 +200,10 @@ function MainApp({ onLogout, isAdmin, lojaUsuario }) {
       });
   }, []);
 
-  // Busca pelo código (produto), código de barras (coluna B), ou referência
-  const buscarCodigo = (codigo) => {
+  // Busca por código (coluna A), código de barras (coluna B) ou referência
+  const transferirCodigo = (codigo) => {
     if (!codigo.trim()) {
-      alert("Digite o código do produto, código de barras.");
+      alert("Digite o código do produto ou código de barras.");
       return;
     }
     const busca = codigo.trim().toLowerCase();
@@ -245,17 +235,17 @@ function MainApp({ onLogout, isAdmin, lojaUsuario }) {
         <div style={styles.buscaContainer}>
           <input
             type="text"
-            placeholder="Digite código, código de barras."
+            placeholder="Digite código ou código de barras..."
             value={codigoDigitado}
             onChange={e => setCodigoDigitado(e.target.value)}
             onKeyDown={e => {
-              if (e.key === "Enter") buscarCodigo(codigoDigitado);
+              if (e.key === "Enter") transferirCodigo(codigoDigitado);
             }}
             style={styles.input}
             autoFocus
           />
-          <button onClick={() => buscarCodigo(codigoDigitado)} style={styles.button}>
-            Buscar
+          <button onClick={() => transferirCodigo(codigoDigitado)} style={styles.button}>
+            Transferir
           </button>
         </div>
         {itensEncontrados.length > 0 && (
