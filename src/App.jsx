@@ -12,7 +12,6 @@ const lojas = [
 
 const logoUrl = "/logo.jpeg";
 
-// Login para cada loja
 const lojasLogin = {
   admin: "Administrador",
   novoshopping: "Novo Shopping",
@@ -104,7 +103,7 @@ function Login({ onLogin }) {
         display: "flex",
         flexDirection: "column",
         gap: 10,
-        alignItems: "center", // Centraliza a logo e o conteúdo
+        alignItems: "center",
         fontFamily: "'Segoe UI', sans-serif",
       }}
     >
@@ -170,7 +169,7 @@ function MainApp({ onLogout, isAdmin, lojaUsuario }) {
   const [itemSelecionado, setItemSelecionado] = useState(null);
   const [lojaDestino, setLojaDestino] = useState(lojas[0]);
   const [vendedor, setVendedor] = useState("");
-  const [lojaSolicitante, setLojaSolicitante] = useState(lojas[0]); // Novo campo
+  const [lojaSolicitante, setLojaSolicitante] = useState(lojas[0]);
 
   useEffect(() => {
     fetch("/itens.xls")
@@ -366,15 +365,31 @@ function MainApp({ onLogout, isAdmin, lojaUsuario }) {
                 type="text"
                 placeholder="Digite código, código de barras."
                 value={codigoDigitado}
-                onChange={(e) => {
-                  setCodigoDigitado(e.target.value);
-                  buscarCodigo(e.target.value);
+                onChange={e => setCodigoDigitado(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Enter") buscarCodigo(codigoDigitado);
                 }}
                 style={styles.input}
               />
               <button onClick={() => buscarCodigo(codigoDigitado)} style={styles.button}>
                 Buscar
               </button>
+            </div>
+            <div style={{ marginTop: 16 }}>
+              <label style={{ fontWeight: "600", display: "block", marginBottom: 6 }}>
+                Solicitante:
+              </label>
+              <select
+                value={lojaSolicitante}
+                onChange={e => setLojaSolicitante(e.target.value)}
+                style={styles.select}
+              >
+                {lojas.map((l) => (
+                  <option key={l} value={l}>
+                    {l}
+                  </option>
+                ))}
+              </select>
             </div>
             {itensEncontrados.length > 0 && (
               <div style={styles.cardContainer}>
@@ -414,21 +429,6 @@ function MainApp({ onLogout, isAdmin, lojaUsuario }) {
 
             {itemSelecionado && (
               <div style={styles.cardSelected}>
-                <label style={{ fontWeight: "600", marginTop: 12, display: "block" }}>
-                  Solicitante:
-                </label>
-                <select
-                  value={lojaSolicitante}
-                  onChange={(e) => setLojaSolicitante(e.target.value)}
-                  style={styles.select}
-                >
-                  {lojas.map((l) => (
-                    <option key={l} value={l}>
-                      {l}
-                    </option>
-                  ))}
-                </select>
-
                 <label style={{ fontWeight: "600", marginTop: 12, display: "block" }}>
                   Destinatário:
                 </label>
