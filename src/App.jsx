@@ -4,15 +4,19 @@ import Barcode from "react-barcode";
 import "./styles.css";
 
 const logins = [
-  { usuario: "democrata", loja: "Democrata", isAdmin: false },
-  { usuario: "admin", loja: "Administrador", isAdmin: true },
+  { usuario: "DomPedro", loja: "Shopping Dom Pedro", isAdmin: false, senha: "1234" },
+  { usuario: "Iguatemi", loja: "Shopping Iguatemi", isAdmin: false, senha: "1234" },
+  { usuario: "NovoShopping", loja: "Novo Shopping", isAdmin: false, senha: "1234" },
+  { usuario: "RibeiraoShopping", loja: "Ribeirão Shopping", isAdmin: false, senha: "1234" },
+  { usuario: "Administrador", loja: "Administrador", isAdmin: true, senha: "demo1234" },
 ];
-const senhaPadrao = "12345";
+
 const lojas = [
   "Novo Shopping",
-  "RibeiraoShopping", // Loja padrão
+  "RibeiraoShopping", // padrão
   "Shopping Galleria",
   "Shopping Dom Pedro",
+  "Shopping Iguatemi",
 ];
 const lojaPadrao = "RibeiraoShopping";
 const logoUrl = "/logo.jpeg";
@@ -35,7 +39,7 @@ export default function App() {
     const usuarioEncontrado = logins.find(
       (u) => u.usuario.toLowerCase() === usuario.toLowerCase()
     );
-    if (usuarioEncontrado && senha === senhaPadrao) {
+    if (usuarioEncontrado && senha === usuarioEncontrado.senha) {
       localStorage.setItem("logado", true);
       localStorage.setItem("isAdmin", usuarioEncontrado.isAdmin);
       localStorage.setItem("usuarioAtual", usuarioEncontrado.usuario);
@@ -68,7 +72,7 @@ export default function App() {
 }
 
 function Login({ onLogin }) {
-  const [usuario, setUsuario] = useState("");
+  const [usuario, setUsuario] = useState(logins[0].usuario);
   const [senha, setSenha] = useState("");
 
   const handleLogin = () => {
@@ -80,13 +84,17 @@ function Login({ onLogin }) {
       <img src={logoUrl} alt="Logo" style={styles.logoLogin} />
       <h1 style={{ marginBottom: 30, color: "#222" }}>Bem-vindo(a)!</h1>
       <div style={styles.inputContainer}>
-        <input
-          type="text"
-          placeholder="Usuário"
+        <select
           value={usuario}
           onChange={(e) => setUsuario(e.target.value)}
           style={styles.input}
-        />
+        >
+          {logins.map((u) => (
+            <option key={u.usuario} value={u.usuario}>
+              {u.usuario}
+            </option>
+          ))}
+        </select>
         <input
           type="password"
           placeholder="Senha"
@@ -98,13 +106,6 @@ function Login({ onLogin }) {
       <button onClick={handleLogin} style={styles.loginButton}>
         Entrar
       </button>
-      <div style={{ marginTop: 28, fontSize: 13, color: "#999" }}>
-        <div>Usuários disponíveis:</div>
-        <ul style={{ margin: 0, padding: 0, listStyle: "none", color: "#666" }}>
-          <li>democrata / 12345</li>
-          <li>admin / 12345</li>
-        </ul>
-      </div>
     </div>
   );
 }
@@ -167,7 +168,6 @@ function MainApp({ onLogout, isAdmin }) {
     localStorage.setItem("transferenciasDemocrata", JSON.stringify(transferencias));
   }, [transferencias]);
 
-  // Transferência automática ao bipar
   const handleInputChange = (e) => {
     const valor = e.target.value;
     setCodigoDigitado(valor);
@@ -262,7 +262,7 @@ function MainApp({ onLogout, isAdmin }) {
     alert("Transferência Realizada!!");
     setItemSelecionado(null);
     setCodigoDigitado("");
-    setLojaDestino(lojas[1]); // sempre volta para RibeiraoShopping
+    setLojaDestino(lojas[1]);
     setItensEncontrados([]);
   };
 
@@ -278,7 +278,6 @@ function MainApp({ onLogout, isAdmin }) {
     }
   };
 
-  // IMPRESSÃO: etiquetas em grid de 2 colunas por linha (inclui Destino)
   const imprimir = () => {
     const janela = window.open("", "_blank");
     if (janela) {
@@ -356,7 +355,7 @@ function MainApp({ onLogout, isAdmin }) {
           <div class="card-impressao">
             <div class="nome-item">${tr.nomeItem}</div>
             <div class="referencia"><strong>Referência:</strong> ${tr.referencia}</div>
-            <div class="destino"><strong>Destino:</strong> ${tr.lojaDestino}</div>
+            <div class="destino"><strong>Destinatário:</strong> ${tr.lojaDestino}</div>
             <div class="barcode">
               <svg id="barcode-${idx}"></svg>
               <div class="codigo-barra-num">${tr.codigoBarra}</div>
@@ -422,7 +421,7 @@ function MainApp({ onLogout, isAdmin }) {
           style={abaAtiva === "itens" ? styles.tabActive : styles.tab}
           onClick={() => setAbaAtiva("itens")}
         >
-          Itens cadastrados
+          Transferência
         </button>
         <button
           style={abaAtiva === "transferidos" ? styles.tabActive : styles.tab}
@@ -462,7 +461,7 @@ function MainApp({ onLogout, isAdmin }) {
               gap: 16,
               margin: "12px 0 18px 0"
             }}>
-              <label style={{ fontWeight: 600 }}>Loja destino:</label>
+              <label style={{ fontWeight: 600 }}>Destinatário:</label>
               <select
                 value={lojaDestino}
                 onChange={e => setLojaDestino(e.target.value)}
@@ -536,40 +535,39 @@ function MainApp({ onLogout, isAdmin }) {
               Histórico de Transferências
             </h2>
             {historicoFiltrado.length === 0 ? (
-              <p style={{ color: "#666" }}>Nenhuma transferência realizada.</p>
+              <p>Nenhuma transferência realizada ainda.</p>
             ) : (
-              <div style={styles.gridTransfer}>
-                {historicoFiltrado.map((tr) => (
-                  <div key={tr.id} style={styles.cardTransfer}>
-                    <h4 style={{ marginTop: 0, marginBottom: 6 }}>
-                      {tr.nomeItem}
-                    </h4>
-                    <p style={{ margin: "2px 0" }}>
-                      <strong>Cód. Barras:</strong> {tr.codigoBarra}
-                    </p>
-                    <p style={{ margin: "2px 0" }}>
-                      <strong>Referência:</strong> {tr.referencia}
-                    </p>
-                    <p style={{ margin: "2px 0" }}>
-                      <strong>Destino:</strong> {tr.lojaDestino}
-                    </p>
-                    <p
-                      style={{
-                        fontSize: 12,
-                        color: "#888",
-                        margin: "2px 0 8px 0",
-                      }}
-                    >
-                      Em {formatarData(tr.data)}
-                    </p>
-                    <Barcode value={tr.codigoBarra} height={40} width={1.5} />
-                  </div>
-                ))}
-              </div>
+              <>
+                <button onClick={imprimir} style={styles.button}>
+                  Imprimir etiquetas
+                </button>
+                <button onClick={excluirTransferencias} style={styles.deleteButton}>
+                  Excluir transferidos
+                </button>
+                <div style={styles.itensList}>
+                  {historicoFiltrado.map((tr) => (
+                    <div key={tr.id} style={styles.card}>
+                      <div style={{ flex: 2 }}>
+                        <h4>{tr.nomeItem}</h4>
+                        <p>
+                          <strong>Referência:</strong> {tr.referencia}
+                        </p>
+                        <p>
+                          <strong>Destinatário:</strong> {tr.lojaDestino}
+                        </p>
+                        <p style={{ fontSize: 12, color: "#666" }}>
+                          {formatarData(tr.data)}
+                        </p>
+                      </div>
+                      <div style={{ minWidth: 150, textAlign: "center" }}>
+                        <Barcode value={tr.codigoBarra} height={40} width={1.5} />
+                        <div style={styles.lojaTagSmall}>{tr.lojaDestino}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
-            <button onClick={imprimir} style={styles.button}>
-              Imprimir Códigos de Barras
-            </button>
           </>
         )}
 
@@ -578,16 +576,10 @@ function MainApp({ onLogout, isAdmin }) {
             <h2 style={{ color: "#1a1a1a", marginBottom: 20 }}>
               Administração
             </h2>
-            <button
-              onClick={excluirTransferencias}
-              style={{
-                ...styles.button,
-                background: "#c0392b",
-                marginTop: 18,
-              }}
-            >
-              Excluir todos os itens transferidos
-            </button>
+            <p>
+              Aqui o administrador poderá futuramente gerenciar usuários,
+              senhas e permissões.
+            </p>
           </>
         )}
       </main>
@@ -596,201 +588,111 @@ function MainApp({ onLogout, isAdmin }) {
 }
 
 const styles = {
+  container: { fontFamily: "Segoe UI, Arial, sans-serif", padding: 20 },
+  header: {
+    display: "flex",
+    alignItems: "center",
+    marginBottom: 20,
+    background: "#f5f7fa",
+    padding: "12px 20px",
+    borderRadius: 8,
+    justifyContent: "space-between",
+  },
+  logo: { width: 70, height: 70, marginRight: 20 },
+  title: { flex: 1, fontSize: 22, color: "#0F3D57" },
+  logoutButton: {
+    padding: "8px 14px",
+    background: "#ff5252",
+    border: "none",
+    borderRadius: 5,
+    color: "white",
+    cursor: "pointer",
+  },
+  tabs: { display: "flex", gap: 12, marginBottom: 20 },
+  tab: {
+    padding: "10px 18px",
+    border: "1px solid #ccc",
+    borderRadius: 5,
+    cursor: "pointer",
+    background: "#fff",
+  },
+  tabActive: {
+    padding: "10px 18px",
+    border: "2px solid #4a90e2",
+    borderRadius: 5,
+    cursor: "pointer",
+    background: "#e8f0fe",
+  },
+  section: { marginTop: 10 },
+  buscaContainer: { display: "flex", alignItems: "center", gap: 8 },
+  input: {
+    padding: 10,
+    border: "1px solid #aaa",
+    borderRadius: 5,
+    fontSize: 15,
+  },
+  select: {
+    padding: 8,
+    border: "1px solid #aaa",
+    borderRadius: 5,
+    fontSize: 15,
+  },
+  button: {
+    padding: "10px 18px",
+    background: "#4a90e2",
+    border: "none",
+    borderRadius: 5,
+    color: "white",
+    cursor: "pointer",
+    fontWeight: 600,
+  },
+  deleteButton: {
+    padding: "10px 18px",
+    background: "#e74c3c",
+    border: "none",
+    borderRadius: 5,
+    color: "white",
+    cursor: "pointer",
+    fontWeight: 600,
+    marginLeft: 10,
+  },
+  cardContainer: { marginTop: 20 },
+  itensList: { display: "grid", gap: 15, marginTop: 10 },
+  card: {
+    display: "flex",
+    justifyContent: "space-between",
+    padding: 14,
+    border: "1px solid #ccc",
+    borderRadius: 8,
+    background: "#fafafa",
+    alignItems: "center",
+  },
+  lojaTagSmall: {
+    fontSize: 12,
+    marginTop: 6,
+    padding: "2px 6px",
+    background: "#4a90e2",
+    color: "#fff",
+    borderRadius: 4,
+  },
   login: {
-    height: "100vh",
-    background: "#f7f7f7",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+    height: "100vh",
+    background: "#f5f7fa",
   },
-  logoLogin: {
-    width: 220,
-    marginBottom: 25,
-    filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.1))",
-  },
-  inputContainer: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 15,
-    marginBottom: 20,
-  },
-  input: {
-    padding: 14,
-    borderRadius: 12,
-    border: "1.5px solid #ccc",
-    fontSize: 18,
-    fontWeight: "500",
-    outline: "none",
-  },
+  logoLogin: { width: 120, marginBottom: 20 },
+  inputContainer: { display: "flex", flexDirection: "column", gap: 10 },
   loginButton: {
-    padding: "16px 40px",
-    fontSize: 22,
-    background: "#4a90e2",
-    color: "#fff",
-    border: "none",
-    borderRadius: 10,
-    cursor: "pointer",
-    boxShadow: "0 6px 12px rgba(74,144,226,0.4)",
-    transition: "background-color 0.3s ease",
-  },
-  container: {
-    fontFamily: "Arial, sans-serif",
-    background: "#fff",
-    minHeight: "100vh",
-    maxWidth: 960,
-    margin: "0 auto",
-    padding: "10px 30px 30px 30px",
-    boxSizing: "border-box",
-  },
-  header: {
-    background: "#222",
-    color: "#fff",
-    padding: "18px 30px",
-    display: "flex",
-    alignItems: "center",
-    gap: 20,
-    borderRadius: 10,
-    marginBottom: 30,
-  },
-  logo: {
-    width: 90,
-    filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.3))",
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "700",
-    flexGrow: 1,
-  },
-  logoutButton: {
-    backgroundColor: "#e03e2f",
-    color: "#fff",
-    border: "none",
-    borderRadius: 8,
-    padding: "10px 22px",
-    fontSize: 15,
-    cursor: "pointer",
-    boxShadow: "0 4px 10px rgba(224,62,47,0.4)",
-    transition: "background-color 0.3s ease",
-  },
-  tabs: {
-    display: "flex",
-    gap: 24,
-    marginBottom: 30,
-    borderBottom: "2px solid #eee",
-  },
-  tab: {
-    padding: "12px 32px",
-    backgroundColor: "transparent",
-    border: "none",
-    borderBottom: "3px solid transparent",
-    fontWeight: "600",
-    fontSize: 16,
-    color: "#666",
-    cursor: "pointer",
-    transition: "all 0.3s ease",
-  },
-  tabActive: {
-    padding: "12px 32px",
-    backgroundColor: "transparent",
-    border: "none",
-    borderBottom: "3px solid #4a90e2",
-    fontWeight: "700",
-    fontSize: 16,
-    color: "#222",
-    cursor: "default",
-  },
-  section: {
-    background: "#fafafa",
-    borderRadius: 12,
-    padding: "12px 25px 25px 25px",
-    boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
-    minHeight: 300,
-  },
-  buscaContainer: {
-    display: "flex",
-    gap: 14,
-    marginBottom: 25,
-  },
-  button: {
-    backgroundColor: "#4a90e2",
-    border: "none",
-    borderRadius: 12,
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 16,
-    padding: "14px 22px",
-    cursor: "pointer",
-    transition: "background-color 0.3s ease",
-  },
-  cardContainer: {
-    maxHeight: 360,
-    overflowY: "auto",
-    marginBottom: 20,
-  },
-  itensList: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 14,
-  },
-  gridTransfer: {
-    display: "grid",
-    gridTemplateColumns: "repeat(2, 1fr)",
-    gap: "24px",
-    marginBottom: 30,
-  },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    boxShadow: "0 3px 10px rgba(0,0,0,0.1)",
-    padding: "12px 28px",
-    width: "100%",
-    maxWidth: 750,
-    minHeight: 80,
-    cursor: "pointer",
-    display: "flex",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 40,
-    transition: "background-color 0.25s ease",
-    marginBottom: 10,
-  },
-  cardSelected: {
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    boxShadow: "0 3px 15px rgba(0,0,0,0.15)",
-    padding: 25,
     marginTop: 20,
-    maxWidth: 600,
-  },
-  select: {
-    width: 220,
-    padding: "7px 12px",
-    fontSize: 15,
-    borderRadius: 7,
-    border: "1.2px solid #ccc",
-    marginTop: 6,
-    maxWidth: 240,
-    minWidth: 110,
-  },
-  cardTransfer: {
-    backgroundColor: "#fff",
-    padding: 18,
-    borderRadius: 10,
-    boxShadow: "0 2px 10px rgba(0,0,0,0.08)",
-    lineHeight: 1.2,
-    marginBottom: 0,
-  },
-  lojaTagSmall: {
-    fontSize: 9,
-    color: "#1761a0",
-    fontWeight: 500,
-    background: "#e8f1f9",
-    borderRadius: 4,
-    padding: "1px 5px",
-    minWidth: 60,
-    marginTop: 2,
-    display: "inline-block"
+    padding: "10px 18px",
+    background: "#4a90e2",
+    border: "none",
+    borderRadius: 5,
+    color: "white",
+    cursor: "pointer",
+    fontWeight: 600,
   },
 };
