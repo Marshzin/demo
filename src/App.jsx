@@ -96,12 +96,6 @@ export default function App() {
       letterSpacing: 2,
       fontSize: 18
     }}
-  >
-    DEMOCRATA
-  </div>
-  <h1>Painel de Transferência</h1>
-  <LoginForm onLogin={handleLogin} />
-</div>
           </div>
         ) : (
           <MainApp
