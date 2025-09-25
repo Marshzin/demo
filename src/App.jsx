@@ -124,6 +124,7 @@ function LoginForm({ onLogin }) {
         <option value="Iguatemi">Iguatemi</option>
         <option value="Adminstrador">Adminstrador</option>
       </select>
+
       <input
         type="password"
         placeholder="Senha"
@@ -133,6 +134,7 @@ function LoginForm({ onLogin }) {
         required
         style={{ marginBottom: 18 }}
       />
+
       <button type="submit">Entrar</button>
     </form>
   );
