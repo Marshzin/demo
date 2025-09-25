@@ -3,7 +3,9 @@ import * as XLSX from "xlsx";
 import Barcode from "react-barcode";
 import "./styles.css";
 
-// Logins e senhas
+// =======================
+// CONFIGURAÇÕES
+// =======================
 const logins = [
   { usuario: "NovoShopping", loja: "NovoShopping", isAdmin: false },
   { usuario: "RibeiraoShopping", loja: "RibeiraoShopping", isAdmin: false },
@@ -21,8 +23,10 @@ const lojas = [
   "Adminstrador"
 ];
 const lojaPadrao = "RibeiraoShopping";
-const logoUrl = ""; // use o caminho da sua logo se quiser
 
+// =======================
+// COMPONENTE PRINCIPAL
+// =======================
 export default function App() {
   const [logado, setLogado] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -70,12 +74,27 @@ export default function App() {
       <div className="container">
         {!logado ? (
           <div className="login-box">
-            <div className="logo" style={{ marginBottom: 15, fontWeight: 700, letterSpacing: 2, fontSize: 18 }}>
+            <div
+              className="logo"
+              style={{
+                marginBottom: 15,
+                fontWeight: 700,
+                letterSpacing: 2,
+                fontSize: 18
+              }}
+            >
               DEMOCRATA
             </div>
             <h1>Painel de Transferência</h1>
             <LoginForm onLogin={handleLogin} />
-            <div style={{ marginTop: 28, fontSize: 15, color: "#999", textAlign: "center" }}>
+            <div
+              style={{
+                marginTop: 28,
+                fontSize: 15,
+                color: "#999",
+                textAlign: "center"
+              }}
+            >
               Usuários disponíveis:
               <div style={{ color: "#666", marginTop: 3, fontSize: 14 }}>
                 NovoShopping / 1234<br />
@@ -98,7 +117,9 @@ export default function App() {
   );
 }
 
-// LOGIN COM SELECT
+// =======================
+// FORMULÁRIO DE LOGIN
+// =======================
 function LoginForm({ onLogin }) {
   const [usuario, setUsuario] = useState("");
   const [senha, setSenha] = useState("");
@@ -109,38 +130,45 @@ function LoginForm({ onLogin }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ width: "100%" }}>
-      <select
-        value={usuario}
-        onChange={e => setUsuario(e.target.value)}
-        className="input"
-        style={{ marginBottom: 12 }}
-        required
-      >
-        <option value="">Selecione o usuário</option>
-        <option value="NovoShopping">NovoShopping</option>
-        <option value="RibeiraoShopping">RibeiraoShopping</option>
-        <option value="DomPedro">DomPedro</option>
-        <option value="Iguatemi">Iguatemi</option>
-        <option value="Adminstrador">Adminstrador</option>
-      </select>
+    <form onSubmit={handleSubmit} style={{ width: "100%" }} className="input-group">
+      {/* Campo SELECT com wrapper e ícone */}
+      <div className="select-wrapper">
+        <span className="select-icon">👤</span>
+        <select
+          value={usuario}
+          onChange={e => setUsuario(e.target.value)}
+          required
+        >
+          <option value="">Selecione o usuário</option>
+          <option value="NovoShopping">NovoShopping</option>
+          <option value="RibeiraoShopping">RibeiraoShopping</option>
+          <option value="DomPedro">DomPedro</option>
+          <option value="Iguatemi">Iguatemi</option>
+          <option value="Adminstrador">Adminstrador</option>
+        </select>
+      </div>
 
-      <input
-        type="password"
-        placeholder="Senha"
-        value={senha}
-        onChange={e => setSenha(e.target.value)}
-        className="input"
-        required
-        style={{ marginBottom: 18 }}
-      />
+      {/* Campo SENHA com wrapper e ícone */}
+      <div className="input-wrapper">
+        <span className="input-icon">🔒</span>
+        <input
+          type="password"
+          placeholder="Senha"
+          value={senha}
+          onChange={e => setSenha(e.target.value)}
+          required
+        />
+      </div>
 
+      {/* Botão já estilizado */}
       <button type="submit">Entrar</button>
     </form>
   );
 }
 
+// =======================
 // SISTEMA PRINCIPAL
+// =======================
 function MainApp({ onLogout, isAdmin, usuarioAtual }) {
   const [abaAtiva, setAbaAtiva] = useState("itens");
   const [itens, setItens] = useState([]);
@@ -153,6 +181,7 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
   const [itemSelecionado, setItemSelecionado] = useState(null);
   const [lojaDestino, setLojaDestino] = useState(lojaPadrao);
 
+  // carregar planilha de itens
   useEffect(() => {
     fetch("/itens.xls")
       .then((res) => res.arrayBuffer())
@@ -183,8 +212,6 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
             codigoBarra,
             nome: descricao,
             referencia,
-            quantidade: 0,
-            tamanho: "-",
           };
         });
 
@@ -199,83 +226,7 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
     localStorage.setItem("transferenciasDemocrata", JSON.stringify(transferencias));
   }, [transferencias]);
 
-  // Transferência automática ao bipar
-  const handleInputChange = (e) => {
-    const valor = e.target.value;
-    setCodigoDigitado(valor);
-
-    if (valor.trim().length >= 5) {
-      const busca = valor.trim().toLowerCase();
-      const encontrados = itens.filter(
-        (i) =>
-          i.codigo.toLowerCase() === busca ||
-          i.codigoBarra.toLowerCase() === busca ||
-          i.referencia.toLowerCase() === busca
-      );
-      if (encontrados.length === 1) {
-        setItemSelecionado(encontrados[0]);
-        setTimeout(() => {
-          transferirItemAuto(encontrados[0]);
-        }, 150);
-        setCodigoDigitado("");
-      } else if (encontrados.length > 1) {
-        setItensEncontrados(encontrados);
-        setItemSelecionado(null);
-      }
-    }
-  };
-
-  const transferirItemAuto = (item) => {
-    if (!item) return;
-    const novaTransferencia = {
-      id: Date.now().toString() + "-" + Math.random(),
-      itemId: item.id,
-      codigo: item.codigo,
-      codigoBarra: item.codigoBarra,
-      nomeItem: item.nome,
-      referencia: item.referencia,
-      lojaDestino,
-      data: new Date().toISOString(),
-    };
-    setTransferencias((old) => [novaTransferencia, ...old]);
-    setItemSelecionado(null);
-    setItensEncontrados([]);
-    setCodigoDigitado("");
-    alert("Transferência Realizada automaticamente!");
-  };
-
-  const buscarCodigo = () => {
-    if (!codigoDigitado.trim()) {
-      alert("Digite o código, referência ou código de barras.");
-      return;
-    }
-
-    const busca = codigoDigitado.trim().toLowerCase();
-
-    const encontrados = itens.filter(
-      (i) =>
-        i.codigo.toLowerCase() === busca ||
-        i.codigoBarra.toLowerCase() === busca ||
-        i.referencia.toLowerCase() === busca
-    );
-
-    if (encontrados.length === 0) {
-      alert("Nenhum item encontrado.");
-      setItensEncontrados([]);
-      setItemSelecionado(null);
-      return;
-    }
-
-    setItensEncontrados(encontrados);
-
-    if (encontrados.length === 1) {
-      setItemSelecionado(encontrados[0]);
-    } else {
-      setItemSelecionado(null);
-    }
-    setCodigoDigitado("");
-  };
-
+  // Transferir item
   const transferirItem = () => {
     if (!itemSelecionado) return alert("Selecione um item para transferir.");
 
@@ -294,88 +245,19 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
     alert("Transferência Realizada!!");
     setItemSelecionado(null);
     setCodigoDigitado("");
-    setLojaDestino(lojas[1]);
     setItensEncontrados([]);
   };
 
+  // excluir histórico
   const excluirTransferencias = () => {
-    if (
-      window.confirm(
-        "Tem certeza que deseja excluir todos os itens transferidos?"
-      )
-    ) {
+    if (window.confirm("Tem certeza que deseja excluir todos os itens transferidos?")) {
       setTransferencias([]);
       localStorage.setItem("transferenciasDemocrata", JSON.stringify([]));
       alert("Todos os itens transferidos foram excluídos.");
     }
   };
 
-  // IMPRESSÃO
-  const imprimir = () => {
-    const janela = window.open("", "_blank");
-    if (janela) {
-      janela.document.write(`
-        <html>
-        <head>
-          <title>Imprimir</title>
-          <style>
-            body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f7fa; padding: 18px; text-align: left; }
-            .grid-impressao { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; margin-bottom: 30px; }
-            .card-impressao { background: #fff; border: 2.5px solid #4a90e2; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.10); padding: 15px 18px; vertical-align: top; text-align: left; width: 340px; margin: 0 auto; display: flex; flex-direction: column; justify-content: flex-start; }
-            .nome-item { font-size: 18px; color: #0F3D57; font-weight: 700; margin-bottom: 10px; word-break: break-word; }
-            .referencia { font-size: 15px; color: #454545; margin-bottom: 6px; }
-            .destino { font-size: 14px; color: #333; margin-bottom: 15px; }
-            .barcode { margin: 10px 0 5px 0; text-align: center; }
-            .codigo-barra-num { font-size: 15px; letter-spacing: 1.2px; font-family: monospace; margin-top: 8px; color: #0F3D57; font-weight: 600; }
-            @media print { body { background: #fff; } .card-impressao { page-break-inside: avoid; } }
-          </style>
-        </head>
-        <body>
-          <div class="grid-impressao">
-      `);
-      transferencias.forEach((tr, idx) => {
-        janela.document.write(`
-          <div class="card-impressao">
-            <div class="nome-item">${tr.nomeItem}</div>
-            <div class="referencia"><strong>Referência:</strong> ${tr.referencia}</div>
-            <div class="destino"><strong>Destino:</strong> ${tr.lojaDestino}</div>
-            <div class="barcode">
-              <svg id="barcode-${idx}"></svg>
-              <div class="codigo-barra-num">${tr.codigoBarra}</div>
-            </div>
-          </div>
-        `);
-      });
-      janela.document.write(`
-          </div>
-        <script src="https://cdn.jsdelivr.net/npm/jsbarcode/dist/JsBarcode.all.min.js"></script>
-        <script>
-          function renderBarcodes() {
-            var dados = ${JSON.stringify(transferencias)};
-            dados.forEach(function(tr, idx){
-              JsBarcode(
-                document.getElementById("barcode-" + idx),
-                tr.codigoBarra,
-                {height:38, width:1.6, fontSize: 13, margin: 0, displayValue: false}
-              );
-            });
-          }
-          if (window.JsBarcode) {
-            renderBarcodes();
-            setTimeout(() => window.print(), 350);
-          } else {
-            window.onload = () => {
-              renderBarcodes();
-              setTimeout(() => window.print(), 350);
-            }
-          }
-        </script>
-        </body></html>
-      `);
-      janela.document.close();
-    }
-  };
-
+  // formatar data
   const formatarData = (iso) => {
     const dt = new Date(iso);
     return dt.toLocaleString("pt-BR", {
@@ -387,14 +269,14 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
     });
   };
 
-  const historicoFiltrado = transferencias;
-
   return (
     <div className="login-box" style={{ maxWidth: 950, width: "100%" }}>
       <h2>Bem-vindo, {usuarioAtual}!</h2>
       <button className="logout" onClick={onLogout} style={{ float: "right", marginBottom: 18 }}>
         Sair
       </button>
+
+      {/* Abas */}
       <nav className="tabs" style={{ marginTop: 20 }}>
         <button
           className={abaAtiva === "itens" ? "tabActive" : "tab"}
@@ -417,121 +299,50 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
           </button>
         )}
       </nav>
+
+      {/* Conteúdo */}
       <main className="section">
         {abaAtiva === "itens" && (
           <>
-            <h3 style={{ color: "#1a1a1a", marginBottom: 20 }}>Buscar e Transferir Item</h3>
-            <div className="buscaContainer">
-              <input
-                type="text"
-                placeholder="Código de Barras, Referência ou Código"
-                value={codigoDigitado}
-                onChange={handleInputChange}
-                className="input"
-                style={{ width: 340 }}
-                autoFocus
-              />
-            </div>
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 16,
-              margin: "12px 0 18px 0"
-            }}>
-              <label style={{ fontWeight: 600 }}>Loja destino:</label>
-              <select
-                value={lojaDestino}
-                onChange={e => setLojaDestino(e.target.value)}
-                className="input"
-              >
-                {lojas.map((l) => (
-                  <option key={l} value={l}>{l}</option>
-                ))}
-              </select>
-              <button
-                className="button"
-                onClick={() => {
-                  if (itemSelecionado) {
-                    transferirItem();
-                  } else if (codigoDigitado.trim()) {
-                    buscarCodigo();
-                    setTimeout(() => {
-                      if (itensEncontrados.length === 1) {
-                        setItemSelecionado(itensEncontrados[0]);
-                        setTimeout(transferirItem, 100);
-                      } else {
-                        alert("Selecione o item após buscar.");
-                      }
-                    }, 100);
-                  } else {
-                    alert("Selecione um item ou digite o código para buscar.");
-                  }
-                }}
-              >
-                Transferir
-              </button>
-            </div>
-            {itensEncontrados.length > 0 && (
-              <div className="cardContainer">
-                <h4>Itens encontrados:</h4>
-                <div className="itensList">
-                  {itensEncontrados.map((item) => (
-                    <div
-                      key={item.id}
-                      onClick={() => setItemSelecionado(item)}
-                      className="card"
-                      style={{
-                        backgroundColor: "#fff",
-                        border:
-                          item.id === itemSelecionado?.id
-                            ? "2px solid #4a90e2"
-                            : "2px solid transparent",
-                      }}
-                    >
-                      <div style={{ flex: 2 }}>
-                        <h4>{item.nome}</h4>
-                        <p>
-                          <strong>Referência:</strong> {item.referencia}
-                        </p>
-                      </div>
-                      <div style={{ minWidth: 150, textAlign: "center" }}>
-                        <Barcode value={item.codigoBarra} height={40} width={1.5} />
-                        <div className="lojaTagSmall">{lojaDestino}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <h3>Buscar e Transferir Item</h3>
+            <input
+              type="text"
+              placeholder="Digite código, referência ou código de barras"
+              value={codigoDigitado}
+              onChange={(e) => setCodigoDigitado(e.target.value)}
+              className="input"
+            />
+            <button onClick={transferirItem}>Transferir</button>
           </>
         )}
 
         {abaAtiva === "transferidos" && (
           <>
-            <h3 style={{ color: "#1a1a1a", marginBottom: 20 }}>Histórico de Transferências</h3>
-            {historicoFiltrado.length === 0 ? (
-              <p style={{ color: "#666" }}>Nenhuma transferência realizada.</p>
+            <h3>Histórico de Transferências</h3>
+            {transferencias.length === 0 ? (
+              <p>Nenhuma transferência realizada.</p>
             ) : (
               <div className="gridTransfer">
-                {historicoFiltrado.map((tr) => (
+                {transferencias.map((tr) => (
                   <div key={tr.id} className="cardTransfer">
-                    <h4 style={{ marginTop: 0, marginBottom: 6 }}>{tr.nomeItem}</h4>
-                    <p style={{ margin: "2px 0" }}><strong>Cód. Barras:</strong> {tr.codigoBarra}</p>
-                    <p style={{ margin: "2px 0" }}><strong>Referência:</strong> {tr.referencia}</p>
-                    <p style={{ margin: "2px 0" }}><strong>Destino:</strong> {tr.lojaDestino}</p>
-                    <p style={{ fontSize: 12, color: "#888", margin: "2px 0 8px 0" }}>Em {formatarData(tr.data)}</p>
+                    <h4>{tr.nomeItem}</h4>
+                    <p><strong>Cód. Barras:</strong> {tr.codigoBarra}</p>
+                    <p><strong>Referência:</strong> {tr.referencia}</p>
+                    <p><strong>Destino:</strong> {tr.lojaDestino}</p>
+                    <p style={{ fontSize: 12, color: "#888" }}>
+                      Em {formatarData(tr.data)}
+                    </p>
                     <Barcode value={tr.codigoBarra} height={40} width={1.5} />
                   </div>
                 ))}
               </div>
             )}
-            <button className="button" onClick={imprimir}>Imprimir Códigos de Barras</button>
           </>
         )}
 
         {abaAtiva === "admin" && isAdmin && (
           <>
-            <h3 style={{ color: "#1a1a1a", marginBottom: 20 }}>Administração</h3>
+            <h3>Administração</h3>
             <button
               onClick={excluirTransferencias}
               className="button"
