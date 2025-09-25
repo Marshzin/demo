@@ -1,141 +1,3 @@
-import React, { useState, useEffect } from "react";
-import * as XLSX from "xlsx";
-import Barcode from "react-barcode";
-import "./styles.css";
-
-// =======================
-// CONFIGURAÇÕES
-// =======================
-const logins = [
-  { usuario: "NovoShopping", loja: "NovoShopping", isAdmin: false },
-  { usuario: "RibeiraoShopping", loja: "RibeiraoShopping", isAdmin: false },
-  { usuario: "DomPedro", loja: "DomPedro", isAdmin: false },
-  { usuario: "Iguatemi", loja: "Iguatemi", isAdmin: false },
-  { usuario: "Adminstrador", loja: "Administrador", isAdmin: true },
-];
-const senhaPadrao = "1234";
-const senhaAdmin = "demo1234";
-const lojas = [
-  "NovoShopping",
-  "RibeiraoShopping",
-  "DomPedro",
-  "Iguatemi",
-  "Adminstrador"
-];
-const lojaPadrao = "RibeiraoShopping";
-
-// =======================
-// COMPONENTE PRINCIPAL
-// =======================
-export default function App() {
-  const [logado, setLogado] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [usuarioAtual, setUsuarioAtual] = useState(null);
-
-  useEffect(() => {
-    const storedLogin = localStorage.getItem("logado");
-    const storedIsAdmin = localStorage.getItem("isAdmin") === "true";
-    const storedUsuario = localStorage.getItem("usuarioAtual");
-    if (storedLogin) setLogado(true);
-    if (storedIsAdmin) setIsAdmin(true);
-    if (storedUsuario) setUsuarioAtual(storedUsuario);
-  }, []);
-
-  function handleLogin(usuario, senha) {
-    const usuarioEncontrado = logins.find((u) => u.usuario === usuario);
-    if (
-      usuarioEncontrado &&
-      ((!usuarioEncontrado.isAdmin && senha === senhaPadrao) ||
-        (usuarioEncontrado.isAdmin && senha === senhaAdmin))
-    ) {
-      localStorage.setItem("logado", true);
-      localStorage.setItem("isAdmin", usuarioEncontrado.isAdmin);
-      localStorage.setItem("usuarioAtual", usuarioEncontrado.usuario);
-      setLogado(true);
-      setIsAdmin(usuarioEncontrado.isAdmin);
-      setUsuarioAtual(usuarioEncontrado.usuario);
-    } else {
-      alert("Usuário ou senha inválidos.");
-    }
-  }
-
-  function handleLogout() {
-    localStorage.removeItem("logado");
-    localStorage.removeItem("isAdmin");
-    localStorage.removeItem("usuarioAtual");
-    setLogado(false);
-    setIsAdmin(false);
-    setUsuarioAtual(null);
-  }
-
-  return (
-    <div>
-      <div className="decorative-circle"></div>
-      <div className="container">
-        {!logado ? (
-          <div className="login-box">
-            <div className="logo">DEMOCRATA</div>
-            <h1>Painel de Transferência</h1>
-            <LoginForm onLogin={handleLogin} />
-          </div>
-        ) : (
-          <MainApp
-            onLogout={handleLogout}
-            isAdmin={isAdmin}
-            usuarioAtual={usuarioAtual}
-          />
-        )}
-      </div>
-    </div>
-  );
-}
-
-// =======================
-// FORMULÁRIO DE LOGIN
-// =======================
-function LoginForm({ onLogin }) {
-  const [usuario, setUsuario] = useState("");
-  const [senha, setSenha] = useState("");
-
-  function handleSubmit(e) {
-    e.preventDefault();
-    onLogin(usuario, senha);
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="input-group">
-      <div className="select-wrapper">
-        <span className="select-icon">👤</span>
-        <select
-          value={usuario}
-          onChange={e => setUsuario(e.target.value)}
-          required
-        >
-          <option value="">Selecione o usuário</option>
-          {logins.map((login) => (
-            <option key={login.usuario} value={login.usuario}>
-              {login.usuario}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="input-wrapper">
-        <span className="input-icon">🔒</span>
-        <input
-          type="password"
-          placeholder="Senha"
-          value={senha}
-          onChange={e => setSenha(e.target.value)}
-          required
-        />
-      </div>
-
-      <button type="submit">Entrar</button>
-    </form>
-  );
-}
-
 // =======================
 // SISTEMA PRINCIPAL
 // =======================
@@ -151,6 +13,7 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
   const [itemSelecionado, setItemSelecionado] = useState(null);
   const [lojaDestino, setLojaDestino] = useState(lojaPadrao);
 
+  // carregar planilha de itens
   useEffect(() => {
     fetch("/itens.xls")
       .then((res) => res.arrayBuffer())
@@ -162,12 +25,16 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
         if (dados.length === 0) return;
         const lista = dados.map((linha, i) => {
           const codigoProduto = String(linha["Código Produto"] || "").trim();
-          const codigosBarras = String(linha["Códigos de Barras"] || "")
+          const codigosBarras = (String(linha["Códigos de Barras"] || "") || "")
             .split("|")
             .map((c) => c.trim())
             .filter((c) => c.length > 0);
 
-          const codigoBarra = codigosBarras.at(-1) || codigoProduto;
+          const codigoBarra =
+            codigosBarras.length > 0
+              ? codigosBarras[codigosBarras.length - 1]
+              : codigoProduto;
+
           const descricao = String(linha["Descrição Completa"] || "Sem descrição").trim();
           const referencia = String(linha["Referência"] || "-").trim();
 
@@ -191,6 +58,24 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
     localStorage.setItem("transferenciasDemocrata", JSON.stringify(transferencias));
   }, [transferencias]);
 
+  // atualizar itens encontrados sempre que digitar
+  useEffect(() => {
+    if (!codigoDigitado) {
+      setItensEncontrados([]);
+      return;
+    }
+    const termo = codigoDigitado.toLowerCase();
+    const resultados = itens.filter(
+      (item) =>
+        item.codigo.toLowerCase().includes(termo) ||
+        item.referencia.toLowerCase().includes(termo) ||
+        item.codigoBarra.toLowerCase().includes(termo) ||
+        item.nome.toLowerCase().includes(termo)
+    );
+    setItensEncontrados(resultados);
+  }, [codigoDigitado, itens]);
+
+  // Transferir item
   const transferirItem = () => {
     if (!itemSelecionado) return alert("Selecione um item para transferir.");
 
@@ -206,20 +91,22 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
     };
 
     setTransferencias((old) => [novaTransferencia, ...old]);
-    alert("Transferência realizada!");
+    alert("Transferência Realizada!!");
     setItemSelecionado(null);
     setCodigoDigitado("");
     setItensEncontrados([]);
   };
 
+  // excluir histórico
   const excluirTransferencias = () => {
     if (window.confirm("Tem certeza que deseja excluir todos os itens transferidos?")) {
       setTransferencias([]);
       localStorage.setItem("transferenciasDemocrata", JSON.stringify([]));
-      alert("Todos os itens foram excluídos.");
+      alert("Todos os itens transferidos foram excluídos.");
     }
   };
 
+  // formatar data
   const formatarData = (iso) => {
     const dt = new Date(iso);
     return dt.toLocaleString("pt-BR", {
@@ -232,91 +119,80 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
   };
 
   return (
-    <div className="login-box" style={{ maxWidth: 950 }}>
-      <div className="cabecalho-usuario">
-        <h2>👋 Bem-vindo, {usuarioAtual}!</h2>
-      </div>
+    <div className="login-box" style={{ maxWidth: 950, width: "100%" }}>
+      <h2>Bem-vindo, {usuarioAtual}!</h2>
+      <button className="logout" onClick={onLogout} style={{ float: "right", marginBottom: 18 }}>
+        Sair
+      </button>
 
-      <nav className="tabs">
-        <button className={abaAtiva === "itens" ? "tabActive" : "tab"} onClick={() => setAbaAtiva("itens")}>Itens</button>
-        <button className={abaAtiva === "transferidos" ? "tabActive" : "tab"} onClick={() => setAbaAtiva("transferidos")}>Transferidos</button>
+      {/* Abas */}
+      <nav className="tabs" style={{ marginTop: 20 }}>
+        <button
+          className={abaAtiva === "itens" ? "tabActive" : "tab"}
+          onClick={() => setAbaAtiva("itens")}
+        >
+          Itens cadastrados
+        </button>
+        <button
+          className={abaAtiva === "transferidos" ? "tabActive" : "tab"}
+          onClick={() => setAbaAtiva("transferidos")}
+        >
+          Itens transferidos
+        </button>
         {isAdmin && (
-          <button className={abaAtiva === "admin" ? "tabActive" : "tab"} onClick={() => setAbaAtiva("admin")}>Administração</button>
+          <button
+            className={abaAtiva === "admin" ? "tabActive" : "tab"}
+            onClick={() => setAbaAtiva("admin")}
+          >
+            Administração
+          </button>
         )}
       </nav>
 
-      {/* CONTINUA ABAIXO... */}
+      {/* Conteúdo */}
       <main className="section">
         {abaAtiva === "itens" && (
           <>
-            <h3>Transferência de Item</h3>
+            <h3>Buscar e Transferir Item</h3>
+            <input
+              type="text"
+              placeholder="Digite código, referência ou código de barras"
+              value={codigoDigitado}
+              onChange={(e) => setCodigoDigitado(e.target.value)}
+              className="input"
+            />
 
-            <div className="search-container">
-              <input
-                type="text"
-                className="input search-input"
-                placeholder="🔍 Buscar por código, referência ou código de barras"
-                value={codigoDigitado}
-                onChange={(e) => {
-                  const valor = e.target.value;
-                  setCodigoDigitado(valor);
-                  if (valor.length > 2) {
-                    const encontrados = itens.filter((item) =>
-                      item.codigo.toLowerCase().includes(valor.toLowerCase()) ||
-                      item.referencia.toLowerCase().includes(valor.toLowerCase()) ||
-                      item.codigoBarra.toLowerCase().includes(valor.toLowerCase())
-                    );
-                    setItensEncontrados(encontrados.slice(0, 10));
-                  } else {
-                    setItensEncontrados([]);
-                  }
-                }}
-              />
-            </div>
-
+            {/* Resultados da busca */}
             {itensEncontrados.length > 0 && (
-              <div className="results-list">
+              <div className="gridTransfer">
                 {itensEncontrados.map((item) => (
-                  <div key={item.id} className="result-card">
-                    <div>
-                      <strong>{item.nome}</strong>
-                      <p>Cód: {item.codigo} | Ref: {item.referencia}</p>
-                    </div>
-                    <button onClick={() => {
-                      setItemSelecionado(item);
-                      setItensEncontrados([]);
-                      setCodigoDigitado("");
-                    }}>
-                      Selecionar
-                    </button>
+                  <div
+                    key={item.id}
+                    className={`cardTransfer ${itemSelecionado?.id === item.id ? "selecionado" : ""}`}
+                    onClick={() => setItemSelecionado(item)}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <h4>{item.nome}</h4>
+                    <p><strong>Cód:</strong> {item.codigo}</p>
+                    <p><strong>Cód. Barras:</strong> {item.codigoBarra}</p>
+                    <p><strong>Ref:</strong> {item.referencia}</p>
                   </div>
                 ))}
               </div>
             )}
 
+            {/* Seleção de loja destino */}
             {itemSelecionado && (
-              <div className="item-detail">
-                <h4>Item Selecionado</h4>
-                <p><strong>Nome:</strong> {itemSelecionado.nome}</p>
-                <p><strong>Referência:</strong> {itemSelecionado.referencia}</p>
-                <p><strong>Código de Barras:</strong> {itemSelecionado.codigoBarra}</p>
-                <Barcode value={itemSelecionado.codigoBarra} height={40} width={1.5} />
-
-                <div className="select-destino">
-                  <label>Loja de destino:</label>
-                  <select
-                    value={lojaDestino}
-                    onChange={(e) => setLojaDestino(e.target.value)}
-                  >
-                    {lojas.filter(l => l !== "Adminstrador").map((loja) => (
-                      <option key={loja} value={loja}>{loja}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <button className="transfer-btn" onClick={transferirItem}>
-                  ➕ Transferir Item
-                </button>
+              <div style={{ marginTop: 20 }}>
+                <h4>Selecionado: {itemSelecionado.nome}</h4>
+                <label>Loja de destino: </label>
+                <select value={lojaDestino} onChange={(e) => setLojaDestino(e.target.value)}>
+                  {lojas.map((loja) => (
+                    <option key={loja} value={loja}>{loja}</option>
+                  ))}
+                </select>
+                <br />
+                <button onClick={transferirItem} style={{ marginTop: 10 }}>Transferir</button>
               </div>
             )}
           </>
@@ -352,20 +228,16 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
             <button
               onClick={excluirTransferencias}
               className="button"
-              style={{ background: "#c0392b", marginTop: 18 }}
+              style={{
+                background: "#c0392b",
+                marginTop: 18,
+              }}
             >
               Excluir todos os itens transferidos
             </button>
           </>
         )}
       </main>
-
-      {/* ✅ BOTÃO DE SAIR NO RODAPÉ */}
-      <footer className="footer-sair">
-        <button className="botao-sair" onClick={onLogout}>
-          ⏻ Sair
-        </button>
-      </footer>
     </div>
   );
 }
