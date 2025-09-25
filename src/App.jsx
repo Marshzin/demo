@@ -46,15 +46,14 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+    <div className="container">
       {!logado ? (
-        <div className="bg-white shadow-xl rounded-2xl p-8 w-96 text-center">
-          <h1 className="text-2xl font-bold mb-6">Painel de Transferência</h1>
+        <div className="login-box">
+          <h1>Painel de Transferência</h1>
 
           <select
             value={usuarioSelecionado}
             onChange={(e) => setUsuarioSelecionado(e.target.value)}
-            className="w-full border rounded-lg p-2 mb-4"
           >
             <option value="">Selecione a Loja</option>
             {logins.map((u) => (
@@ -69,35 +68,21 @@ export default function App() {
             placeholder="Digite a senha"
             value={senha}
             onChange={(e) => setSenha(e.target.value)}
-            className="w-full border rounded-lg p-2 mb-4"
           />
 
-          {erro && <p className="text-red-500 text-sm mb-2">{erro}</p>}
+          {erro && <p className="erro">{erro}</p>}
 
-          <button
-            onClick={handleLogin}
-            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
-          >
-            Entrar
-          </button>
+          <button onClick={handleLogin}>Entrar</button>
         </div>
       ) : (
-        <div className="bg-white shadow-xl rounded-2xl p-8 w-96 text-center">
-          <h2 className="text-xl font-bold mb-4">
-            Bem-vindo, {usuarioLogado.loja}!
-          </h2>
+        <div className="login-box">
+          <h2>Bem-vindo, {usuarioLogado.loja}!</h2>
           {usuarioLogado.isAdmin ? (
-            <p className="text-green-600 font-semibold mb-4">
-              Permissões de Administrador
-            </p>
+            <p className="admin">Permissões de Administrador</p>
           ) : (
-            <p className="text-gray-600 mb-4">Usuário comum</p>
+            <p className="normal">Usuário comum</p>
           )}
-
-          <button
-            onClick={handleLogout}
-            className="w-full bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 transition"
-          >
+          <button className="logout" onClick={handleLogout}>
             Sair
           </button>
         </div>
