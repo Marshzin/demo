@@ -87,15 +87,6 @@ export default function App() {
             </div>
             <h1>Painel de Transferência</h1>
             <LoginForm onLogin={handleLogin} />
-            <div className="login-box">
-  <div
-    className="logo"
-    style={{
-      marginBottom: 15,
-      fontWeight: 700,
-      letterSpacing: 2,
-      fontSize: 18
-    }}
           </div>
         ) : (
           <MainApp
