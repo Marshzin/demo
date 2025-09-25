@@ -3,22 +3,26 @@ import * as XLSX from "xlsx";
 import Barcode from "react-barcode";
 import "./styles.css";
 
-// Usuários e lojas
+// Logins e senhas
 const logins = [
-  { usuario: "democrata", loja: "Democrata", isAdmin: false },
-  { usuario: "admin", loja: "Administrador", isAdmin: true },
+  { usuario: "NovoShopping", loja: "NovoShopping", isAdmin: false },
+  { usuario: "RibeiraoShopping", loja: "RibeiraoShopping", isAdmin: false },
+  { usuario: "DomPedro", loja: "DomPedro", isAdmin: false },
+  { usuario: "Iguatemi", loja: "Iguatemi", isAdmin: false },
+  { usuario: "Adminstrador", loja: "Administrador", isAdmin: true },
 ];
-const senhaPadrao = "12345";
+const senhaPadrao = "1234";
+const senhaAdmin = "demo1234";
 const lojas = [
-  "Novo Shopping",
-  "RibeiraoShopping", // Loja padrão
-  "Shopping Galleria",
-  "Shopping Dom Pedro",
+  "NovoShopping",
+  "RibeiraoShopping",
+  "DomPedro",
+  "Iguatemi",
+  "Adminstrador"
 ];
 const lojaPadrao = "RibeiraoShopping";
-const logoUrl = "/logo.jpeg";
+const logoUrl = ""; // use o caminho da sua logo se quiser
 
-// PRINCIPAL
 export default function App() {
   const [logado, setLogado] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -34,10 +38,12 @@ export default function App() {
   }, []);
 
   function handleLogin(usuario, senha) {
-    const usuarioEncontrado = logins.find(
-      (u) => u.usuario.toLowerCase() === usuario.toLowerCase()
-    );
-    if (usuarioEncontrado && senha === senhaPadrao) {
+    const usuarioEncontrado = logins.find((u) => u.usuario === usuario);
+    if (
+      usuarioEncontrado &&
+      ((!usuarioEncontrado.isAdmin && senha === senhaPadrao) ||
+        (usuarioEncontrado.isAdmin && senha === senhaAdmin))
+    ) {
       localStorage.setItem("logado", true);
       localStorage.setItem("isAdmin", usuarioEncontrado.isAdmin);
       localStorage.setItem("usuarioAtual", usuarioEncontrado.usuario);
@@ -58,62 +64,82 @@ export default function App() {
     setUsuarioAtual(null);
   }
 
-  return logado ? (
-    <MainApp
-      onLogout={handleLogout}
-      isAdmin={isAdmin}
-      usuarioAtual={usuarioAtual}
-    />
-  ) : (
-    <Login onLogin={handleLogin} />
-  );
-}
-
-// TELA DE LOGIN
-function Login({ onLogin }) {
-  const [usuario, setUsuario] = useState("");
-  const [senha, setSenha] = useState("");
-
-  const handleLogin = () => {
-    onLogin(usuario, senha);
-  };
-
   return (
-    <div className="container">
-      <div className="login-box">
-        <img src={logoUrl} alt="Logo" style={{ width: 120, marginBottom: 18 }} />
-        <h1>Painel de Transferência</h1>
-        <div className="input-group" style={{ marginBottom: 18 }}>
-          <input
-            type="text"
-            placeholder="Usuário"
-            value={usuario}
-            onChange={(e) => setUsuario(e.target.value)}
-            className="input"
+    <div>
+      <div className="decorative-circle"></div>
+      <div className="container">
+        {!logado ? (
+          <div className="login-box">
+            <div className="logo" style={{ marginBottom: 15, fontWeight: 700, letterSpacing: 2, fontSize: 18 }}>
+              DEMOCRATA
+            </div>
+            <h1>Painel de Transferência</h1>
+            <LoginForm onLogin={handleLogin} />
+            <div style={{ marginTop: 28, fontSize: 15, color: "#999", textAlign: "center" }}>
+              Usuários disponíveis:
+              <div style={{ color: "#666", marginTop: 3, fontSize: 14 }}>
+                NovoShopping / 1234<br />
+                RibeiraoShopping / 1234<br />
+                DomPedro / 1234<br />
+                Iguatemi / 1234<br />
+                Adminstrador / demo1234
+              </div>
+            </div>
+          </div>
+        ) : (
+          <MainApp
+            onLogout={handleLogout}
+            isAdmin={isAdmin}
+            usuarioAtual={usuarioAtual}
           />
-          <input
-            type="password"
-            placeholder="Senha"
-            value={senha}
-            onChange={(e) => setSenha(e.target.value)}
-            className="input"
-          />
-        </div>
-        <button onClick={handleLogin}>Entrar</button>
-        <div style={{ marginTop: 28, fontSize: 13, color: "#999", textAlign: "center" }}>
-          <div>Usuários disponíveis:</div>
-          <ul style={{ margin: 0, padding: 0, listStyle: "none", color: "#666" }}>
-            <li>democrata / 12345</li>
-            <li>admin / 12345</li>
-          </ul>
-        </div>
+        )}
       </div>
     </div>
   );
 }
 
-// APP PRINCIPAL
-function MainApp({ onLogout, isAdmin }) {
+// LOGIN COM SELECT
+function LoginForm({ onLogin }) {
+  const [usuario, setUsuario] = useState("");
+  const [senha, setSenha] = useState("");
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    onLogin(usuario, senha);
+  }
+
+  return (
+    <form onSubmit={handleSubmit} style={{ width: "100%" }}>
+      <select
+        value={usuario}
+        onChange={e => setUsuario(e.target.value)}
+        className="input"
+        style={{ marginBottom: 12 }}
+        required
+      >
+        <option value="">Selecione o usuário</option>
+        <option value="NovoShopping">NovoShopping</option>
+        <option value="RibeiraoShopping">RibeiraoShopping</option>
+        <option value="DomPedro">DomPedro</option>
+        <option value="Iguatemi">Iguatemi</option>
+        <option value="Adminstrador">Adminstrador</option>
+      </select>
+      <input
+        type="password"
+        placeholder="Senha"
+        value={senha}
+        onChange={e => setSenha(e.target.value)}
+        className="input"
+        required
+        style={{ marginBottom: 18 }}
+      />
+      <button type="submit">Entrar</button>
+    </form>
+  );
+}
+
+// SISTEMA PRINCIPAL
+function MainApp({ onLogout, isAdmin, usuarioAtual }) {
   const [abaAtiva, setAbaAtiva] = useState("itens");
   const [itens, setItens] = useState([]);
   const [transferencias, setTransferencias] = useState(() => {
@@ -362,14 +388,12 @@ function MainApp({ onLogout, isAdmin }) {
   const historicoFiltrado = transferencias;
 
   return (
-    <div className="container">
-      <header className="header">
-        <img src={logoUrl} alt="Logo" className="logo" />
-        <h1 className="title">Democrata - Transferência por Código ou Referência</h1>
-        <button className="logoutButton" onClick={onLogout}>Sair</button>
-      </header>
-
-      <nav className="tabs">
+    <div className="login-box" style={{ maxWidth: 950, width: "100%" }}>
+      <h2>Bem-vindo, {usuarioAtual}!</h2>
+      <button className="logout" onClick={onLogout} style={{ float: "right", marginBottom: 18 }}>
+        Sair
+      </button>
+      <nav className="tabs" style={{ marginTop: 20 }}>
         <button
           className={abaAtiva === "itens" ? "tabActive" : "tab"}
           onClick={() => setAbaAtiva("itens")}
@@ -391,11 +415,10 @@ function MainApp({ onLogout, isAdmin }) {
           </button>
         )}
       </nav>
-
       <main className="section">
         {abaAtiva === "itens" && (
           <>
-            <h2 style={{ color: "#1a1a1a", marginBottom: 20 }}>Buscar e Transferir Item</h2>
+            <h3 style={{ color: "#1a1a1a", marginBottom: 20 }}>Buscar e Transferir Item</h3>
             <div className="buscaContainer">
               <input
                 type="text"
@@ -417,7 +440,7 @@ function MainApp({ onLogout, isAdmin }) {
               <select
                 value={lojaDestino}
                 onChange={e => setLojaDestino(e.target.value)}
-                className="select"
+                className="input"
               >
                 {lojas.map((l) => (
                   <option key={l} value={l}>{l}</option>
@@ -448,7 +471,7 @@ function MainApp({ onLogout, isAdmin }) {
             </div>
             {itensEncontrados.length > 0 && (
               <div className="cardContainer">
-                <h3>Itens encontrados:</h3>
+                <h4>Itens encontrados:</h4>
                 <div className="itensList">
                   {itensEncontrados.map((item) => (
                     <div
@@ -483,7 +506,7 @@ function MainApp({ onLogout, isAdmin }) {
 
         {abaAtiva === "transferidos" && (
           <>
-            <h2 style={{ color: "#1a1a1a", marginBottom: 20 }}>Histórico de Transferências</h2>
+            <h3 style={{ color: "#1a1a1a", marginBottom: 20 }}>Histórico de Transferências</h3>
             {historicoFiltrado.length === 0 ? (
               <p style={{ color: "#666" }}>Nenhuma transferência realizada.</p>
             ) : (
@@ -506,7 +529,7 @@ function MainApp({ onLogout, isAdmin }) {
 
         {abaAtiva === "admin" && isAdmin && (
           <>
-            <h2 style={{ color: "#1a1a1a", marginBottom: 20 }}>Administração</h2>
+            <h3 style={{ color: "#1a1a1a", marginBottom: 20 }}>Administração</h3>
             <button
               onClick={excluirTransferencias}
               className="button"
