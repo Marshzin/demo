@@ -2,10 +2,11 @@
 
 :root {
   --main-purple: #6f33b3;
-  --input-bg: #eeeeee;
-  --input-border: #6f33b3;
-  --box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-  --radius: 40px;
+  --light-purple: #e7daf7;
+  --input-bg: #f4f2fa;
+  --input-border: #b197d6;
+  --box-shadow: 0 10px 40px rgba(111,51,179,0.11);
+  --radius: 32px;
   --font: 'Montserrat', Arial, sans-serif;
 }
 
@@ -19,32 +20,27 @@ body {
   overflow-x: hidden;
 }
 
-/* Fundo decorativo sempre visível, mesmo ao rolar */
-body::before {
-  content: '';
-  position: fixed;
-  top: -10vw; right: -15vw;
-  width: 55vw; height: 55vw;
-  background: radial-gradient(circle at 40% 40%, #d1bae6 60%, transparent 100%);
-  z-index: 0;
-  opacity: 0.5;
-  pointer-events: none;
-  border-radius: 50%;
-}
-
+body::before,
 body::after {
   content: '';
   position: fixed;
+  pointer-events: none;
+  border-radius: 50%;
+  z-index: 0;
+}
+body::before {
+  top: -10vw; right: -15vw;
+  width: 55vw; height: 55vw;
+  background: radial-gradient(circle at 40% 40%, #d1bae6 60%, transparent 100%);
+  opacity: 0.5;
+}
+body::after {
   left: -15vw; top: 30vh;
   width: 40vw; height: 40vw;
   background: radial-gradient(circle at 60% 60%, #d1bae6 40%, transparent 100%);
-  z-index: 0;
   opacity: 0.3;
-  pointer-events: none;
-  border-radius: 50%;
 }
 
-/* Círculo decorativo no canto inferior esquerdo */
 .decorative-circle {
   position: fixed;
   left: -12vw;
@@ -71,7 +67,7 @@ body::after {
   background: #fff;
   border-radius: var(--radius);
   box-shadow: var(--box-shadow);
-  padding: 48px 40px 40px 40px;
+  padding: 52px 38px 40px 38px;
   max-width: 420px;
   width: 100%;
   min-width: 300px;
@@ -80,39 +76,134 @@ body::after {
   gap: 24px;
   align-items: center;
   z-index: 1;
+  position: relative;
 }
 
-.login-box h1, .login-box h2 {
-  font-size: 2.2rem;
+.login-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 8px;
+  justify-content: center;
+}
+.login-header .icon {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, var(--main-purple) 15%, #b197d6 100%);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.login-header svg {
+  width: 22px;
+  height: 22px;
+  fill: #fff;
+}
+.login-box h1 {
+  font-size: 2.1rem;
   font-weight: 700;
   color: var(--main-purple);
-  margin-bottom: 10px;
-  margin-top: 0;
+  margin: 0;
   text-align: center;
+  line-height: 1.15;
 }
 
-select, input[type="password"] {
+.input-group {
   width: 100%;
-  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* Estilização do select com ícone */
+.select-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+.select-wrapper .select-icon {
+  position: absolute;
+  left: 16px;
+  z-index: 2;
+  color: var(--main-purple);
+  font-size: 1.2rem;
+  pointer-events: none;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.select-wrapper select {
+  width: 100%;
+  padding: 14px 16px 14px 44px;
   border-radius: 22px;
   border: 2px solid var(--input-border);
-  margin-bottom: 10px;
+  background: var(--input-bg);
   font-size: 1.08rem;
   font-family: var(--font);
-  background: var(--input-bg);
-  box-sizing: border-box;
   color: #444;
+  box-sizing: border-box;
   outline: none;
-  transition: border 0.2s;
+  appearance: none;
+  transition: border 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 8px rgba(111,51,179,0.08);
 }
-
-select:focus, input[type="password"]:focus {
+.select-wrapper select:focus {
   border-color: var(--main-purple);
+  box-shadow: 0 4px 14px rgba(111,51,179,0.14);
 }
 
+/* Custom arrow for select */
+.select-wrapper::after {
+  content: '';
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-width: 7px 5px 0 5px;
+  border-style: solid;
+  border-color: var(--main-purple) transparent transparent transparent;
+  pointer-events: none;
+}
+
+/* Estilização do input de senha */
+.input-wrapper {
+  position: relative;
+  width: 100%;
+}
+.input-wrapper input[type="password"] {
+  width: 100%;
+  padding: 14px 16px 14px 44px;
+  border-radius: 22px;
+  border: 2px solid var(--input-border);
+  background: var(--input-bg);
+  font-size: 1.08rem;
+  font-family: var(--font);
+  color: #444;
+  box-sizing: border-box;
+  outline: none;
+  transition: border 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 8px rgba(111,51,179,0.08);
+}
+.input-wrapper input[type="password"]:focus {
+  border-color: var(--main-purple);
+  box-shadow: 0 4px 14px rgba(111,51,179,0.14);
+}
+.input-wrapper .input-icon {
+  position: absolute;
+  left: 16px;
+  z-index: 2;
+  color: var(--main-purple);
+  font-size: 1.2rem;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+/* Botão de login */
 button {
   width: 100%;
-  background: var(--main-purple);
+  background: linear-gradient(90deg, var(--main-purple) 60%, #b197d6 100%);
   color: #fff;
   border: none;
   border-radius: 22px;
@@ -123,54 +214,56 @@ button {
   cursor: pointer;
   transition: background 0.2s, box-shadow 0.2s;
   box-shadow: 0 3px 12px rgba(111,51,179,0.10);
-  margin-top: 10px;
+  margin-top: 8px;
+  letter-spacing: 0.08em;
 }
-
 button:hover, button:focus {
-  background: #5a2996;
+  background: linear-gradient(90deg, #5a2996 50%, var(--main-purple) 100%);
   box-shadow: 0 5px 16px rgba(111,51,179,0.15);
 }
 
+/* Mensagem de erro */
 .erro {
   color: #e44343;
   font-size: 1rem;
   margin: 0;
   text-align: center;
+  margin-bottom: 2px;
+  font-weight: 600;
 }
 
+/* Mensagens de login */
 .admin {
   color: var(--main-purple);
   font-weight: 700;
   font-size: 1.1rem;
   text-align: center;
 }
-
 .normal {
   color: #888;
   font-size: 1.06rem;
   text-align: center;
   font-style: italic;
 }
-
 .logout {
   background: #eee;
   color: var(--main-purple);
   font-weight: 700;
   border: 2px solid var(--main-purple);
   margin-top: 24px;
+  letter-spacing: 0.08em;
 }
 
+/* Responsivo */
 @media (max-width: 600px) {
   .login-box {
-    padding: 32px 14px 24px 14px;
-    max-width: 96vw;
+    padding: 24px 8px 18px 8px;
+    max-width: 98vw;
   }
-  .login-box h1, .login-box h2 {
+  .login-box h1 {
     font-size: 1.5rem;
   }
-}
-
-/* Ajuste visual para garantir que o fundo decorativo cubra todo o viewport */
-html, body {
-  height: 100%;
+  .login-header .icon {
+    width: 28px; height: 28px;
+  }
 }
