@@ -1,7 +1,7 @@
 body {
   margin: 0;
   font-family: Arial, sans-serif;
-  background: #f3f4f6;
+  background: linear-gradient(135deg, #2563eb, #1e3a8a);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -16,5 +16,70 @@ body {
 
 .login-box {
   background: #fff;
-  padding: 30px;
-  border-r
+  padding: 40px;
+  border-radius: 16px;
+  box-shadow: 0px 8px 20px rgba(0,0,0,0.2);
+  text-align: center;
+  width: 350px;
+  animation: fadeIn 0.6s ease-in-out;
+}
+
+.login-box h1, .login-box h2 {
+  margin-bottom: 20px;
+  color: #111827;
+}
+
+.login-box select,
+.login-box input {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 15px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+.login-box button {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  background: #2563eb;
+  color: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 15px;
+  transition: background 0.3s ease;
+}
+
+.login-box button:hover {
+  background: #1d4ed8;
+}
+
+.erro {
+  color: red;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.admin {
+  color: green;
+  font-weight: bold;
+}
+
+.normal {
+  color: gray;
+}
+
+.logout {
+  background: #dc2626 !important;
+}
+
+.logout:hover {
+  background: #b91c1c !important;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
