@@ -342,4 +342,3 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
     </div>
   );
 }
- 
