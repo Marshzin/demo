@@ -1,85 +1,155 @@
+@import url('https://fonts.googleapis.com/css?family=Montserrat:700,400&display=swap');
+
+:root {
+  --main-purple: #6f33b3;
+  --input-bg: #eeeeee;
+  --input-border: #6f33b3;
+  --box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+  --radius: 40px;
+  --font: 'Montserrat', Arial, sans-serif;
+}
+
 body {
   margin: 0;
-  font-family: Arial, sans-serif;
-  background: linear-gradient(135deg, #2563eb, #1e3a8a);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
+  padding: 0;
+  font-family: var(--font);
+  background: linear-gradient(135deg, #f7f7f7 70%, #d1bae6 100%);
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: absolute;
+  top: -10vw; right: -15vw;
+  width: 55vw; height: 55vw;
+  background: radial-gradient(circle at 40% 40%, #d1bae6 60%, transparent 100%);
+  z-index: 0;
+  opacity: 0.5;
+  pointer-events: none;
+  border-radius: 50%;
+}
+
+body::after {
+  content: '';
+  position: absolute;
+  left: -15vw; top: 30vh;
+  width: 40vw; height: 40vw;
+  background: radial-gradient(circle at 60% 60%, #d1bae6 40%, transparent 100%);
+  z-index: 0;
+  opacity: 0.3;
+  pointer-events: none;
+  border-radius: 50%;
 }
 
 .container {
+  min-height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
+  z-index: 1;
+  position: relative;
 }
 
 .login-box {
   background: #fff;
-  padding: 40px;
-  border-radius: 16px;
-  box-shadow: 0px 8px 20px rgba(0,0,0,0.2);
-  text-align: center;
-  width: 350px;
-  animation: fadeIn 0.6s ease-in-out;
+  border-radius: var(--radius);
+  box-shadow: var(--box-shadow);
+  padding: 48px 40px 40px 40px;
+  max-width: 420px;
+  width: 100%;
+  min-width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  align-items: center;
 }
 
 .login-box h1, .login-box h2 {
-  margin-bottom: 20px;
-  color: #111827;
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--main-purple);
+  margin-bottom: 10px;
+  margin-top: 0;
+  text-align: center;
 }
 
-.login-box select,
-.login-box input {
+select, input[type="password"] {
   width: 100%;
-  padding: 12px;
-  margin-bottom: 15px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  font-size: 15px;
+  padding: 14px 16px;
+  border-radius: 22px;
+  border: 2px solid var(--input-border);
+  margin-bottom: 10px;
+  font-size: 1.08rem;
+  font-family: var(--font);
+  background: var(--input-bg);
+  box-sizing: border-box;
+  color: #444;
+  outline: none;
+  transition: border 0.2s;
 }
 
-.login-box button {
+select:focus, input[type="password"]:focus {
+  border-color: var(--main-purple);
+}
+
+button {
   width: 100%;
-  padding: 12px;
-  border: none;
-  background: #2563eb;
+  background: var(--main-purple);
   color: #fff;
-  border-radius: 8px;
+  border: none;
+  border-radius: 22px;
+  padding: 13px 0;
+  font-size: 1.15rem;
+  font-family: var(--font);
+  font-weight: 500;
   cursor: pointer;
-  font-weight: bold;
-  font-size: 15px;
-  transition: background 0.3s ease;
+  transition: background 0.2s, box-shadow 0.2s;
+  box-shadow: 0 3px 12px rgba(111,51,179,0.10);
+  margin-top: 10px;
 }
 
-.login-box button:hover {
-  background: #1d4ed8;
+button:hover, button:focus {
+  background: #5a2996;
+  box-shadow: 0 5px 16px rgba(111,51,179,0.15);
 }
 
 .erro {
-  color: red;
-  font-size: 14px;
-  margin-bottom: 10px;
+  color: #e44343;
+  font-size: 1rem;
+  margin: 0;
+  text-align: center;
 }
 
 .admin {
-  color: green;
-  font-weight: bold;
+  color: var(--main-purple);
+  font-weight: 700;
+  font-size: 1.1rem;
+  text-align: center;
 }
 
 .normal {
-  color: gray;
+  color: #888;
+  font-size: 1.06rem;
+  text-align: center;
+  font-style: italic;
 }
 
 .logout {
-  background: #dc2626 !important;
+  background: #eee;
+  color: var(--main-purple);
+  font-weight: 700;
+  border: 2px solid var(--main-purple);
+  margin-top: 24px;
 }
 
-.logout:hover {
-  background: #b91c1c !important;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-20px); }
-  to { opacity: 1; transform: translateY(0); }
+@media (max-width: 600px) {
+  .login-box {
+    padding: 32px 14px 24px 14px;
+    max-width: 96vw;
+  }
+  .login-box h1, .login-box h2 {
+    font-size: 1.5rem;
+  }
 }
