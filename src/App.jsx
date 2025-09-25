@@ -233,23 +233,19 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
 
   return (
     <div className="login-box" style={{ maxWidth: 950 }}>
-      <h2>Bem-vindo, {usuarioAtual}!</h2>
-      <button className="logout" onClick={onLogout}>Sair</button>
+      <div className="cabecalho-usuario">
+        <h2>👋 Bem-vindo, {usuarioAtual}!</h2>
+      </div>
 
       <nav className="tabs">
-        <button className={abaAtiva === "itens" ? "tabActive" : "tab"} onClick={() => setAbaAtiva("itens")}>
-          Itens
-        </button>
-        <button className={abaAtiva === "transferidos" ? "tabActive" : "tab"} onClick={() => setAbaAtiva("transferidos")}>
-          Transferidos
-        </button>
+        <button className={abaAtiva === "itens" ? "tabActive" : "tab"} onClick={() => setAbaAtiva("itens")}>Itens</button>
+        <button className={abaAtiva === "transferidos" ? "tabActive" : "tab"} onClick={() => setAbaAtiva("transferidos")}>Transferidos</button>
         {isAdmin && (
-          <button className={abaAtiva === "admin" ? "tabActive" : "tab"} onClick={() => setAbaAtiva("admin")}>
-            Administração
-          </button>
+          <button className={abaAtiva === "admin" ? "tabActive" : "tab"} onClick={() => setAbaAtiva("admin")}>Administração</button>
         )}
       </nav>
 
+      {/* CONTINUA ABAIXO... */}
       <main className="section">
         {abaAtiva === "itens" && (
           <>
@@ -353,12 +349,23 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
         {abaAtiva === "admin" && isAdmin && (
           <>
             <h3>Administração</h3>
-            <button onClick={excluirTransferencias} className="button" style={{ background: "#c0392b" }}>
+            <button
+              onClick={excluirTransferencias}
+              className="button"
+              style={{ background: "#c0392b", marginTop: 18 }}
+            >
               Excluir todos os itens transferidos
             </button>
           </>
         )}
       </main>
+
+      {/* ✅ BOTÃO DE SAIR NO RODAPÉ */}
+      <footer className="footer-sair">
+        <button className="botao-sair" onClick={onLogout}>
+          ⏻ Sair
+        </button>
+      </footer>
     </div>
   );
 }
