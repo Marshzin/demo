@@ -87,23 +87,21 @@ export default function App() {
             </div>
             <h1>Painel de Transferência</h1>
             <LoginForm onLogin={handleLogin} />
-            <div
-              style={{
-                marginTop: 28,
-                fontSize: 15,
-                color: "#999",
-                textAlign: "center"
-              }}
-            >
-              Usuários disponíveis:
-              <div style={{ color: "#666", marginTop: 3, fontSize: 14 }}>
-                NovoShopping / 1234<br />
-                RibeiraoShopping / 1234<br />
-                DomPedro / 1234<br />
-                Iguatemi / 1234<br />
-                Adminstrador / demo1234
-              </div>
-            </div>
+            <div className="login-box">
+  <div
+    className="logo"
+    style={{
+      marginBottom: 15,
+      fontWeight: 700,
+      letterSpacing: 2,
+      fontSize: 18
+    }}
+  >
+    DEMOCRATA
+  </div>
+  <h1>Painel de Transferência</h1>
+  <LoginForm onLogin={handleLogin} />
+</div>
           </div>
         ) : (
           <MainApp
