@@ -74,17 +74,7 @@ export default function App() {
       <div className="container">
         {!logado ? (
           <div className="login-box">
-            <div
-              className="logo"
-              style={{
-                marginBottom: 15,
-                fontWeight: 700,
-                letterSpacing: 2,
-                fontSize: 18
-              }}
-            >
-              DEMOCRATA
-            </div>
+            <div className="logo">DEMOCRATA</div>
             <h1>Painel de Transferência</h1>
             <LoginForm onLogin={handleLogin} />
           </div>
@@ -113,8 +103,7 @@ function LoginForm({ onLogin }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ width: "100%" }} className="input-group">
-      {/* Campo SELECT com wrapper e ícone */}
+    <form onSubmit={handleSubmit} className="input-group">
       <div className="select-wrapper">
         <span className="select-icon">👤</span>
         <select
@@ -123,15 +112,14 @@ function LoginForm({ onLogin }) {
           required
         >
           <option value="">Selecione o usuário</option>
-          <option value="NovoShopping">NovoShopping</option>
-          <option value="RibeiraoShopping">RibeiraoShopping</option>
-          <option value="DomPedro">DomPedro</option>
-          <option value="Iguatemi">Iguatemi</option>
-          <option value="Adminstrador">Adminstrador</option>
+          {logins.map((login) => (
+            <option key={login.usuario} value={login.usuario}>
+              {login.usuario}
+            </option>
+          ))}
         </select>
       </div>
 
-      {/* Campo SENHA com wrapper e ícone */}
       <div className="input-wrapper">
         <span className="input-icon">🔒</span>
         <input
@@ -143,7 +131,6 @@ function LoginForm({ onLogin }) {
         />
       </div>
 
-      {/* Botão já estilizado */}
       <button type="submit">Entrar</button>
     </form>
   );
@@ -164,7 +151,6 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
   const [itemSelecionado, setItemSelecionado] = useState(null);
   const [lojaDestino, setLojaDestino] = useState(lojaPadrao);
 
-  // carregar planilha de itens
   useEffect(() => {
     fetch("/itens.xls")
       .then((res) => res.arrayBuffer())
@@ -176,16 +162,12 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
         if (dados.length === 0) return;
         const lista = dados.map((linha, i) => {
           const codigoProduto = String(linha["Código Produto"] || "").trim();
-          const codigosBarras = (String(linha["Códigos de Barras"] || "") || "")
+          const codigosBarras = String(linha["Códigos de Barras"] || "")
             .split("|")
             .map((c) => c.trim())
             .filter((c) => c.length > 0);
 
-          const codigoBarra =
-            codigosBarras.length > 0
-              ? codigosBarras[codigosBarras.length - 1]
-              : codigoProduto;
-
+          const codigoBarra = codigosBarras.at(-1) || codigoProduto;
           const descricao = String(linha["Descrição Completa"] || "Sem descrição").trim();
           const referencia = String(linha["Referência"] || "-").trim();
 
@@ -209,7 +191,6 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
     localStorage.setItem("transferenciasDemocrata", JSON.stringify(transferencias));
   }, [transferencias]);
 
-  // Transferir item
   const transferirItem = () => {
     if (!itemSelecionado) return alert("Selecione um item para transferir.");
 
@@ -225,22 +206,20 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
     };
 
     setTransferencias((old) => [novaTransferencia, ...old]);
-    alert("Transferência Realizada!!");
+    alert("Transferência realizada!");
     setItemSelecionado(null);
     setCodigoDigitado("");
     setItensEncontrados([]);
   };
 
-  // excluir histórico
   const excluirTransferencias = () => {
     if (window.confirm("Tem certeza que deseja excluir todos os itens transferidos?")) {
       setTransferencias([]);
       localStorage.setItem("transferenciasDemocrata", JSON.stringify([]));
-      alert("Todos os itens transferidos foram excluídos.");
+      alert("Todos os itens foram excluídos.");
     }
   };
 
-  // formatar data
   const formatarData = (iso) => {
     const dt = new Date(iso);
     return dt.toLocaleString("pt-BR", {
@@ -253,49 +232,97 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
   };
 
   return (
-    <div className="login-box" style={{ maxWidth: 950, width: "100%" }}>
+    <div className="login-box" style={{ maxWidth: 950 }}>
       <h2>Bem-vindo, {usuarioAtual}!</h2>
-      <button className="logout" onClick={onLogout} style={{ float: "right", marginBottom: 18 }}>
-        Sair
-      </button>
+      <button className="logout" onClick={onLogout}>Sair</button>
 
-      {/* Abas */}
-      <nav className="tabs" style={{ marginTop: 20 }}>
-        <button
-          className={abaAtiva === "itens" ? "tabActive" : "tab"}
-          onClick={() => setAbaAtiva("itens")}
-        >
-          Itens cadastrados
+      <nav className="tabs">
+        <button className={abaAtiva === "itens" ? "tabActive" : "tab"} onClick={() => setAbaAtiva("itens")}>
+          Itens
         </button>
-        <button
-          className={abaAtiva === "transferidos" ? "tabActive" : "tab"}
-          onClick={() => setAbaAtiva("transferidos")}
-        >
-          Itens transferidos
+        <button className={abaAtiva === "transferidos" ? "tabActive" : "tab"} onClick={() => setAbaAtiva("transferidos")}>
+          Transferidos
         </button>
         {isAdmin && (
-          <button
-            className={abaAtiva === "admin" ? "tabActive" : "tab"}
-            onClick={() => setAbaAtiva("admin")}
-          >
+          <button className={abaAtiva === "admin" ? "tabActive" : "tab"} onClick={() => setAbaAtiva("admin")}>
             Administração
           </button>
         )}
       </nav>
 
-      {/* Conteúdo */}
       <main className="section">
         {abaAtiva === "itens" && (
           <>
-            <h3>Buscar e Transferir Item</h3>
-            <input
-              type="text"
-              placeholder="Digite código, referência ou código de barras"
-              value={codigoDigitado}
-              onChange={(e) => setCodigoDigitado(e.target.value)}
-              className="input"
-            />
-            <button onClick={transferirItem}>Transferir</button>
+            <h3>Transferência de Item</h3>
+
+            <div className="search-container">
+              <input
+                type="text"
+                className="input search-input"
+                placeholder="🔍 Buscar por código, referência ou código de barras"
+                value={codigoDigitado}
+                onChange={(e) => {
+                  const valor = e.target.value;
+                  setCodigoDigitado(valor);
+                  if (valor.length > 2) {
+                    const encontrados = itens.filter((item) =>
+                      item.codigo.toLowerCase().includes(valor.toLowerCase()) ||
+                      item.referencia.toLowerCase().includes(valor.toLowerCase()) ||
+                      item.codigoBarra.toLowerCase().includes(valor.toLowerCase())
+                    );
+                    setItensEncontrados(encontrados.slice(0, 10));
+                  } else {
+                    setItensEncontrados([]);
+                  }
+                }}
+              />
+            </div>
+
+            {itensEncontrados.length > 0 && (
+              <div className="results-list">
+                {itensEncontrados.map((item) => (
+                  <div key={item.id} className="result-card">
+                    <div>
+                      <strong>{item.nome}</strong>
+                      <p>Cód: {item.codigo} | Ref: {item.referencia}</p>
+                    </div>
+                    <button onClick={() => {
+                      setItemSelecionado(item);
+                      setItensEncontrados([]);
+                      setCodigoDigitado("");
+                    }}>
+                      Selecionar
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {itemSelecionado && (
+              <div className="item-detail">
+                <h4>Item Selecionado</h4>
+                <p><strong>Nome:</strong> {itemSelecionado.nome}</p>
+                <p><strong>Referência:</strong> {itemSelecionado.referencia}</p>
+                <p><strong>Código de Barras:</strong> {itemSelecionado.codigoBarra}</p>
+                <Barcode value={itemSelecionado.codigoBarra} height={40} width={1.5} />
+
+                <div className="select-destino">
+                  <label>Loja de destino:</label>
+                  <select
+                    value={lojaDestino}
+                    onChange={(e) => setLojaDestino(e.target.value)}
+                  >
+                    {lojas.filter(l => l !== "Adminstrador").map((loja) => (
+                      <option key={loja} value={loja}>{loja}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <button className="transfer-btn" onClick={transferirItem}>
+                  ➕ Transferir Item
+                </button>
+              </div>
+            )}
           </>
         )}
 
@@ -326,14 +353,7 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
         {abaAtiva === "admin" && isAdmin && (
           <>
             <h3>Administração</h3>
-            <button
-              onClick={excluirTransferencias}
-              className="button"
-              style={{
-                background: "#c0392b",
-                marginTop: 18,
-              }}
-            >
+            <button onClick={excluirTransferencias} className="button" style={{ background: "#c0392b" }}>
               Excluir todos os itens transferidos
             </button>
           </>
