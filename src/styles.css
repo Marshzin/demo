@@ -13,15 +13,16 @@ body {
   margin: 0;
   padding: 0;
   font-family: var(--font);
-  background: linear-gradient(135deg, #f7f7f7 70%, #d1bae6 100%);
   min-height: 100vh;
+  background: linear-gradient(135deg, #f7f7f7 70%, #d1bae6 100%);
   position: relative;
   overflow-x: hidden;
 }
 
+/* Fundo decorativo sempre visível, mesmo ao rolar */
 body::before {
   content: '';
-  position: absolute;
+  position: fixed;
   top: -10vw; right: -15vw;
   width: 55vw; height: 55vw;
   background: radial-gradient(circle at 40% 40%, #d1bae6 60%, transparent 100%);
@@ -33,7 +34,7 @@ body::before {
 
 body::after {
   content: '';
-  position: absolute;
+  position: fixed;
   left: -15vw; top: 30vh;
   width: 40vw; height: 40vw;
   background: radial-gradient(circle at 60% 60%, #d1bae6 40%, transparent 100%);
@@ -41,6 +42,20 @@ body::after {
   opacity: 0.3;
   pointer-events: none;
   border-radius: 50%;
+}
+
+/* Círculo decorativo no canto inferior esquerdo */
+.decorative-circle {
+  position: fixed;
+  left: -12vw;
+  bottom: -12vw;
+  width: 35vw;
+  height: 35vw;
+  background: #d1bae6;
+  opacity: 0.18;
+  border-radius: 50%;
+  z-index: 0;
+  pointer-events: none;
 }
 
 .container {
@@ -64,6 +79,7 @@ body::after {
   flex-direction: column;
   gap: 24px;
   align-items: center;
+  z-index: 1;
 }
 
 .login-box h1, .login-box h2 {
@@ -152,4 +168,9 @@ button:hover, button:focus {
   .login-box h1, .login-box h2 {
     font-size: 1.5rem;
   }
+}
+
+/* Ajuste visual para garantir que o fundo decorativo cubra todo o viewport */
+html, body {
+  height: 100%;
 }
