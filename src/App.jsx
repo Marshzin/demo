@@ -73,7 +73,7 @@ function Login({ onLogin }) {
   return (
     <div style={styles.login}>
       <img src={logoUrl} alt="Logo" style={styles.logoLogin} />
-      <h1 style={{ marginBottom: 30, color: "#222" }}>Bem-vindo(a)!</h1>
+      <h1 style={styles.title}>Transferência de Produtos</h1>
 
       <div style={styles.inputContainer}>
         <select
@@ -224,16 +224,17 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
     setTransferencias((old) => {
       const copia = { ...old };
       if (!copia[usuarioAtual]) copia[usuarioAtual] = [];
-      copia[usuarioAtual] = [novaTransferencia, ...(copia[usuarioAtual] || [])];
-      return copia;
+      copia[usuarioAtual] = [novaTransferencia, ...copia[usuarioAtual]];
+      localStorage.setItem("transferencias", JSON.stringify(copia));
+      setTransferencias(copia);
+      alert("Transferência realizada com sucesso.");
+      setItemSelecionado(null);
     });
-    alert("Transferência realizada com sucesso.");
-    setItemSelecionado(null);
   };
 
   return (
     <div style={styles.mainApp}>
-      <h1 style={{ textAlign: "center", margin: 40 }}>Transferências</h1>
+      <h1 style={styles.title}>Transferência de Produtos</h1>
       <button onClick={onLogout} style={styles.logoutButton}>Logout</button>
       <div style={styles.container}>
         <div style={styles.panel}>
@@ -297,10 +298,7 @@ const styles = {
   logoLogin: {
     width: "220px",
     marginBottom: "25px",
-    objectFit: "contain",  // Garante que a imagem se ajuste corretamente
-    objectPosition: "center",  // Centraliza a imagem
-    border: "none",  // Remove qualquer borda que possa ter sido aplicada
-    boxShadow: "none",  // Remove qualquer sombra aplicada
+    objectFit: "contain",
   },
   login: {
     display: "flex",
@@ -310,6 +308,12 @@ const styles = {
     height: "100vh",
     backgroundColor: "#f4f4f4",
     textAlign: "center",
+  },
+  title: {
+    fontFamily: "'Roboto', sans-serif", // Fonte personalizada
+    fontSize: "32px",
+    fontWeight: "700",
+    marginBottom: "20px",
   },
   inputContainer: {
     display: "flex",
