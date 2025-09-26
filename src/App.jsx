@@ -11,15 +11,7 @@ const logins = [
   { usuario: "admin", loja: "Administrador", senha: "demo1234", isAdmin: true },
 ];
 
-const lojasLogin = ["NovoShopping", "RibeiraoShopping", "Iguatemi", "DomPedro", "Administrador"];
-
-const lojas = [
-  "NovoShopping",
-  "RibeiraoShopping",
-  "Iguatemi",
-  "DomPedro",
-];
-
+const lojas = ["NovoShopping", "RibeiraoShopping", "Iguatemi", "DomPedro"];
 const logoUrl = "/logo.jpeg";
 
 export default function App() {
@@ -40,9 +32,7 @@ export default function App() {
   }, []);
 
   function handleLogin(usuario, senha, loja) {
-    const usuarioEncontrado = logins.find(
-      (u) => u.usuario.toLowerCase() === usuario.toLowerCase() && u.loja === loja
-    );
+    const usuarioEncontrado = logins.find((u) => u.usuario === usuario);
     if (usuarioEncontrado && senha === usuarioEncontrado.senha) {
       localStorage.setItem("logado", true);
       localStorage.setItem("isAdmin", usuarioEncontrado.isAdmin);
@@ -53,7 +43,7 @@ export default function App() {
       setUsuarioAtual(usuarioEncontrado.usuario);
       setLojaAtual(usuarioEncontrado.loja);
     } else {
-      alert("Usuário, loja ou senha inválidos.");
+      alert("Usuário ou senha inválidos.");
     }
   }
 
@@ -76,27 +66,34 @@ export default function App() {
 }
 
 function Login({ onLogin }) {
-  const [usuario, setUsuario] = useState("");
+  const [usuarioSelecionado, setUsuarioSelecionado] = useState(logins[0].usuario);
   const [senha, setSenha] = useState("");
-  const [lojaSelecionada, setLojaSelecionada] = useState(lojasLogin[0]);
 
   const handleLogin = () => {
-    onLogin(usuario, senha, lojaSelecionada);
+    const usuarioObj = logins.find((u) => u.usuario === usuarioSelecionado);
+    if (usuarioObj) {
+      onLogin(usuarioObj.usuario, senha, usuarioObj.loja);
+    }
   };
 
   return (
     <div style={styles.login}>
       <img src={logoUrl} alt="Logo" style={styles.logoLogin} />
       <h1 style={{ marginBottom: 30, color: "#222" }}>Bem-vindo(a)!</h1>
+
       <div style={styles.inputContainer}>
-        <input
-          type="text"
-          placeholder="Usuário"
-          value={usuario}
-          onChange={(e) => setUsuario(e.target.value)}
-          style={styles.input}
-          autoFocus
-        />
+        <select
+          value={usuarioSelecionado}
+          onChange={(e) => setUsuarioSelecionado(e.target.value)}
+          style={{ ...styles.input, padding: 14, borderRadius: 12, cursor: "pointer" }}
+        >
+          {logins.map((u) => (
+            <option key={u.usuario} value={u.usuario}>
+              {u.usuario}
+            </option>
+          ))}
+        </select>
+
         <input
           type="password"
           placeholder="Senha"
@@ -104,31 +101,11 @@ function Login({ onLogin }) {
           onChange={(e) => setSenha(e.target.value)}
           style={styles.input}
         />
-        <select
-          value={lojaSelecionada}
-          onChange={(e) => setLojaSelecionada(e.target.value)}
-          style={{ ...styles.input, padding: 14, borderRadius: 12, cursor: "pointer" }}
-        >
-          {lojasLogin.map((loja) => (
-            <option key={loja} value={loja}>
-              {loja}
-            </option>
-          ))}
-        </select>
       </div>
+
       <button onClick={handleLogin} style={styles.loginButton}>
         Entrar
       </button>
-      <div style={{ marginTop: 28, fontSize: 13, color: "#999" }}>
-        <div>Usuários disponíveis e senhas:</div>
-        <ul style={{ margin: 0, padding: 0, listStyle: "none", color: "#666" }}>
-          {logins.map(({ usuario, senha }) => (
-            <li key={usuario}>
-              {usuario} / {senha}
-            </li>
-          ))}
-        </ul>
-      </div>
     </div>
   );
 }
@@ -146,8 +123,7 @@ function MainApp({ onLogout, isAdmin, usuarioAtual, lojaAtual }) {
   const [lojaDestino, setLojaDestino] = useState(
     lojaAtual !== "Administrador" ? lojaAtual : lojas[0]
   );
-
-  const [lojaParaLimpar, setLojaParaLimpar] = useState(lojasLogin[0]);
+  const [lojaParaLimpar, setLojaParaLimpar] = useState(lojas[0]);
 
   useEffect(() => {
     fetch("/itens.xls")
@@ -163,7 +139,10 @@ function MainApp({ onLogout, isAdmin, usuarioAtual, lojaAtual }) {
             .split("|")
             .map((c) => c.trim())
             .filter((c) => c.length > 0);
-          const codigoBarra = codigosBarras.length > 0 ? codigosBarras[codigosBarras.length - 1] : codigoProduto;
+          const codigoBarra =
+            codigosBarras.length > 0
+              ? codigosBarras[codigosBarras.length - 1]
+              : codigoProduto;
           const descricao = String(linha["Descrição Completa"] || "Sem descrição").trim();
           const referencia = String(linha["Referência"] || "-").trim();
           return {
@@ -273,7 +252,7 @@ function MainApp({ onLogout, isAdmin, usuarioAtual, lojaAtual }) {
     alert("Transferência Realizada!!");
     setItemSelecionado(null);
     setCodigoDigitado("");
-    setLojaDestino(lojas[0]); // volta para primeira loja da lista
+    setLojaDestino(lojas[0]);
     setItensEncontrados([]);
   };
 
@@ -477,8 +456,13 @@ function MainApp({ onLogout, isAdmin, usuarioAtual, lojaAtual }) {
                         </p>
                       </div>
                       <div style={{ minWidth: 150, textAlign: "center" }}>
-                        <Barcode value={item.codigoBarra} height={40} width={1.5} />
-                        <div style={styles.lojaTagSmall}>{lojaDestino}</div>
+                        <Barcode
+                          value={item.codigoBarra}
+                          height={40}
+                          width={1.4}
+                          displayValue={true}
+                          fontSize={12}
+                        />
                       </div>
                     </div>
                   ))}
@@ -492,58 +476,63 @@ function MainApp({ onLogout, isAdmin, usuarioAtual, lojaAtual }) {
           <>
             <h2 style={{ color: "#1a1a1a", marginBottom: 20 }}> Histórico de Transferências </h2>
             {historicoFiltrado.length === 0 ? (
-              <p style={{ color: "#666" }}>Nenhuma transferência realizada.</p>
+              <p>Nenhuma transferência realizada.</p>
             ) : (
-              <div style={styles.gridTransfer}>
-                {historicoFiltrado.map((tr) => (
-                  <div key={tr.id} style={styles.cardTransfer}>
-                    <h4 style={{ marginTop: 0, marginBottom: 6 }}>{tr.nomeItem}</h4>
-                    <p style={{ margin: "2px 0" }}>
-                      <strong>Cód. Barras:</strong> {tr.codigoBarra}
-                    </p>
-                    <p style={{ margin: "2px 0" }}>
-                      <strong>Referência:</strong> {tr.referencia}
-                    </p>
-                    <p style={{ margin: "2px 0" }}>
-                      <strong>Destino:</strong> {tr.lojaDestino}
-                    </p>
-                    <p style={{ fontSize: 12, color: "#888", margin: "2px 0 8px 0" }}>
-                      Em {formatarData(tr.data)}
-                    </p>
-                    <Barcode value={tr.codigoBarra} height={40} width={1.5} />
-                  </div>
-                ))}
-              </div>
+              <>
+                <button onClick={imprimir} style={styles.button}>
+                  Imprimir Selecionados
+                </button>
+                <div style={styles.cardContainer}>
+                  {historicoFiltrado.map((tr) => (
+                    <div key={tr.id} style={styles.card}>
+                      <div style={{ flex: 2 }}>
+                        <h4>{tr.nomeItem}</h4>
+                        <p>
+                          <strong>Referência:</strong> {tr.referencia}
+                        </p>
+                        <p>
+                          <strong>Destino:</strong> {tr.lojaDestino}
+                        </p>
+                        <p>
+                          <strong>Data:</strong> {formatarData(tr.data)}
+                        </p>
+                      </div>
+                      <div style={{ minWidth: 160, textAlign: "center" }}>
+                        <Barcode
+                          value={tr.codigoBarra}
+                          height={40}
+                          width={1.4}
+                          displayValue={true}
+                          fontSize={12}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
-            <button onClick={imprimir} style={styles.button}>
-              Imprimir Códigos de Barras
-            </button>
           </>
         )}
 
         {abaAtiva === "admin" && isAdmin && (
           <>
             <h2 style={{ color: "#1a1a1a", marginBottom: 20 }}> Administração </h2>
-            <label style={{ fontWeight: 600, display: "block", marginBottom: 6 }}>
-              Selecione a loja para excluir histórico:
-            </label>
-            <select
-              value={lojaParaLimpar}
-              onChange={(e) => setLojaParaLimpar(e.target.value)}
-              style={styles.select}
-            >
-              {lojasLogin.map((loja) => (
-                <option key={loja} value={loja}>
-                  {loja}
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={excluirTransferencias}
-              style={{ ...styles.button, background: "#c0392b", marginTop: 18 }}
-            >
-              Excluir histórico da loja
-            </button>
+            <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+              <select
+                value={lojaParaLimpar}
+                onChange={(e) => setLojaParaLimpar(e.target.value)}
+                style={styles.select}
+              >
+                {lojas.map((l) => (
+                  <option key={l} value={l}>
+                    {l}
+                  </option>
+                ))}
+              </select>
+              <button onClick={excluirTransferencias} style={{ ...styles.button, background: "#d9534f" }}>
+                Excluir Histórico da Loja
+              </button>
+            </div>
           </>
         )}
       </main>
@@ -552,202 +541,139 @@ function MainApp({ onLogout, isAdmin, usuarioAtual, lojaAtual }) {
 }
 
 const styles = {
-  login: {
-    height: "100vh",
-    background: "#f7f7f7",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+  container: {
+    fontFamily: "'Segoe UI', Arial, sans-serif",
+    background: "#f5f7fa",
+    minHeight: "100vh",
   },
-  logoLogin: {
-    width: 220,
-    marginBottom: 25,
-    filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.1))",
+  header: {
+    background: "#0F3D57",
+    padding: "14px 22px",
+    color: "#fff",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+  },
+  logo: {
+    height: 50,
+    marginRight: 16,
+  },
+  title: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: "600",
+  },
+  logoutButton: {
+    background: "#d9534f",
+    border: "none",
+    color: "#fff",
+    padding: "8px 14px",
+    borderRadius: 6,
+    cursor: "pointer",
+    fontSize: 14,
+  },
+  tabs: {
+    display: "flex",
+    borderBottom: "2px solid #ddd",
+    background: "#fff",
+  },
+  tab: {
+    flex: 1,
+    padding: 14,
+    cursor: "pointer",
+    background: "#fff",
+    border: "none",
+    fontWeight: 500,
+    fontSize: 15,
+  },
+  tabActive: {
+    flex: 1,
+    padding: 14,
+    cursor: "pointer",
+    background: "#e1efff",
+    border: "none",
+    fontWeight: 600,
+    fontSize: 15,
+    borderBottom: "3px solid #0F3D57",
+  },
+  section: {
+    padding: 20,
   },
   inputContainer: {
     display: "flex",
     flexDirection: "column",
-    gap: 15,
-    marginBottom: 20,
+    gap: 14,
+    width: 260,
   },
   input: {
-    padding: 14,
-    borderRadius: 12,
-    border: "1.5px solid #ccc",
-    fontSize: 18,
-    fontWeight: "500",
+    padding: 12,
+    borderRadius: 8,
+    border: "1px solid #ccc",
+    fontSize: 14,
     outline: "none",
-    appearance: "none",
+  },
+  select: {
+    padding: 10,
+    borderRadius: 8,
+    border: "1px solid #ccc",
+    fontSize: 14,
+  },
+  button: {
+    background: "#4a90e2",
+    border: "none",
+    color: "#fff",
+    padding: "10px 16px",
+    borderRadius: 6,
+    cursor: "pointer",
+    fontSize: 14,
+  },
+  login: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    height: "100vh",
+    background: "#eef2f7",
   },
   loginButton: {
-    padding: "16px 40px",
-    fontSize: 22,
-    background: "#4a90e2",
+    marginTop: 20,
+    background: "#0F3D57",
     color: "#fff",
-    border: "none",
-    borderRadius: 10,
-    cursor: "pointer",
-    boxShadow: "0 6px 12px rgba(74,144,226,0.4)",
-    transition: "background-color 0.3s ease",
-  },
-  container: {
-    fontFamily: "Arial, sans-serif",
-    background: "#fff",
-    minHeight: "100vh",
-    maxWidth: 960,
-    margin: "0 auto",
-    padding: "10px 30px 30px 30px",
-    boxSizing: "border-box",
-  },
-  header: {
-    background: "#222",
-    color: "#fff",
-    padding: "18px 30px",
-    display: "flex",
-    alignItems: "center",
-    gap: 20,
-    borderRadius: 10,
-    marginBottom: 30,
-  },
-  logo: {
-    width: 90,
-    filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.3))",
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "700",
-    flexGrow: 1,
-  },
-  logoutButton: {
-    backgroundColor: "#e03e2f",
-    color: "#fff",
-    border: "none",
+    padding: "12px 20px",
     borderRadius: 8,
-    padding: "10px 22px",
-    fontSize: 15,
+    border: "none",
     cursor: "pointer",
-    boxShadow: "0 4px 10px rgba(224,62,47,0.4)",
-    transition: "background-color 0.3s ease",
+    fontSize: 16,
+    fontWeight: 600,
   },
-  tabs: {
-    display: "flex",
-    gap: 24,
+  logoLogin: {
+    width: 160,
     marginBottom: 30,
-    borderBottom: "2px solid #eee",
-  },
-  tab: {
-    padding: "12px 32px",
-    backgroundColor: "transparent",
-    border: "none",
-    borderBottom: "3px solid transparent",
-    fontWeight: "600",
-    fontSize: 16,
-    color: "#666",
-    cursor: "pointer",
-    transition: "all 0.3s ease",
-  },
-  tabActive: {
-    padding: "12px 32px",
-    backgroundColor: "transparent",
-    border: "none",
-    borderBottom: "3px solid #4a90e2",
-    fontWeight: "700",
-    fontSize: 16,
-    color: "#222",
-    cursor: "default",
-  },
-  section: {
-    background: "#fafafa",
-    borderRadius: 12,
-    padding: "12px 25px 25px 25px",
-    boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
-    minHeight: 300,
   },
   buscaContainer: {
     display: "flex",
-    gap: 14,
-    marginBottom: 25,
-  },
-  button: {
-    backgroundColor: "#4a90e2",
-    border: "none",
-    borderRadius: 12,
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 16,
-    padding: "14px 22px",
-    cursor: "pointer",
-    transition: "background-color 0.3s ease",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 16,
   },
   cardContainer: {
-    maxHeight: 360,
-    overflowY: "auto",
-    marginBottom: 20,
+    marginTop: 18,
+  },
+  card: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    background: "#fff",
+    padding: 12,
+    marginBottom: 10,
+    borderRadius: 8,
+    boxShadow: "0 1px 5px rgba(0,0,0,0.1)",
   },
   itensList: {
     display: "flex",
     flexDirection: "column",
-    gap: 14,
-  },
-  gridTransfer: {
-    display: "grid",
-    gridTemplateColumns: "repeat(2, 1fr)",
-    gap: "24px",
-    marginBottom: 30,
-  },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    boxShadow: "0 3px 10px rgba(0,0,0,0.1)",
-    padding: "12px 28px",
-    width: "100%",
-    maxWidth: 750,
-    minHeight: 80,
-    cursor: "pointer",
-    display: "flex",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 40,
-    transition: "background-color 0.25s ease",
-    marginBottom: 10,
-  },
-  cardSelected: {
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    boxShadow: "0 3px 15px rgba(0,0,0,0.15)",
-    padding: 25,
-    marginTop: 20,
-    maxWidth: 600,
-  },
-  select: {
-    width: 220,
-    padding: "7px 12px",
-    fontSize: 15,
-    borderRadius: 7,
-    border: "1.2px solid #ccc",
-    marginTop: 6,
-    maxWidth: 240,
-    minWidth: 110,
-  },
-  cardTransfer: {
-    backgroundColor: "#fff",
-    padding: 18,
-    borderRadius: 10,
-    boxShadow: "0 2px 10px rgba(0,0,0,0.08)",
-    lineHeight: 1.2,
-    marginBottom: 0,
-  },
-  lojaTagSmall: {
-    fontSize: 9,
-    color: "#1761a0",
-    fontWeight: 500,
-    background: "#e8f1f9",
-    borderRadius: 4,
-    padding: "1px 5px",
-    minWidth: 60,
-    marginTop: 2,
-    display: "inline-block",
+    gap: 12,
+    marginTop: 12,
   },
 };
