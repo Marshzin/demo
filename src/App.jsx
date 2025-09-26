@@ -95,6 +95,7 @@ function Login({ onLogin }) {
           value={usuario}
           onChange={(e) => setUsuario(e.target.value)}
           style={styles.input}
+          autoFocus
         />
         <input
           type="password"
@@ -106,7 +107,7 @@ function Login({ onLogin }) {
         <select
           value={lojaSelecionada}
           onChange={(e) => setLojaSelecionada(e.target.value)}
-          style={{ ...styles.input, padding: 14, borderRadius: 12 }}
+          style={{ ...styles.input, padding: 14, borderRadius: 12, cursor: "pointer" }}
         >
           {lojasLogin.map((loja) => (
             <option key={loja} value={loja}>
@@ -146,7 +147,6 @@ function MainApp({ onLogout, isAdmin, usuarioAtual, lojaAtual }) {
     lojaAtual !== "Administrador" ? lojaAtual : lojas[0]
   );
 
-  // Para admin, escolha de loja para excluir histórico
   const [lojaParaLimpar, setLojaParaLimpar] = useState(lojasLogin[0]);
 
   useEffect(() => {
@@ -187,7 +187,6 @@ function MainApp({ onLogout, isAdmin, usuarioAtual, lojaAtual }) {
     localStorage.setItem(`transferencias_${lojaAtual}`, JSON.stringify(transferencias));
   }, [transferencias, lojaAtual]);
 
-  // Transferência automática ao bipar
   const handleInputChange = (e) => {
     const valor = e.target.value;
     setCodigoDigitado(valor);
