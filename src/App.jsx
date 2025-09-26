@@ -116,7 +116,6 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
   const [itemSelecionado, setItemSelecionado] = useState(null);
   const [lojaDestino, setLojaDestino] = useState(lojas[0]);
 
-  // Carregar itens do XLS
   useEffect(() => {
     fetch("/itens.xls")
       .then((res) => res.arrayBuffer())
@@ -140,7 +139,6 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
       .catch(() => alert("Erro ao carregar itens.xls"));
   }, []);
 
-  // Salvar transferências no localStorage por loja
   useEffect(() => {
     localStorage.setItem("transferencias", JSON.stringify(transferencias));
   }, [transferencias]);
@@ -229,169 +227,162 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
       copia[usuarioAtual] = [novaTransferencia, ...(copia[usuarioAtual] || [])];
       return copia;
     });
-    alert("Transferência Realizada!!");
+    alert("Transferência realizada com sucesso.");
     setItemSelecionado(null);
-    setCodigoDigitado("");
-    setItensEncontrados([]);
   };
-
-  const excluirTransferencias = (loja) => {
-    if (
-      window.confirm(`Tem certeza que deseja excluir todas as transferências da loja ${loja}?`)
-    ) {
-      setTransferencias((old) => ({ ...old, [loja]: [] }));
-      alert(`Transferências da loja ${loja} foram excluídas.`);
-    }
-  };
-
-  const historicoFiltrado = transferencias[usuarioAtual] || [];
-
-  const formatarData = (iso) => new Date(iso).toLocaleString("pt-BR", {
-    day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
-  });
 
   return (
-    <div style={styles.container}>
-      <header style={styles.header}>
-        <img src={logoUrl} alt="Logo" style={styles.logo} />
-        <h1 style={styles.title}>Democrata - Transferência ({usuarioAtual})</h1>
-        <button onClick={onLogout} style={styles.logoutButton}>Sair</button>
-      </header>
-
-      <nav style={styles.tabs}>
-        <button
-          style={abaAtiva === "itens" ? styles.tabActive : styles.tab}
-          onClick={() => setAbaAtiva("itens")}
-        >Itens cadastrados</button>
-        <button
-          style={abaAtiva === "transferidos" ? styles.tabActive : styles.tab}
-          onClick={() => setAbaAtiva("transferidos")}
-        >Itens transferidos</button>
-        {isAdmin && (
-          <button
-            style={abaAtiva === "admin" ? styles.tabActive : styles.tab}
-            onClick={() => setAbaAtiva("admin")}
-          >Administração</button>
-        )}
-      </nav>
-
-      <main style={styles.section}>
-        {abaAtiva === "itens" && (
-          <>
-            <h2>Buscar e Transferir Item</h2>
-            <div style={styles.buscaContainer}>
-              <input
-                type="text"
-                placeholder="Código, Referência ou Código de Barras"
-                value={codigoDigitado}
-                onChange={handleInputChange}
-                style={{ ...styles.input, width: 340 }}
-                autoFocus
-              />
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
-              <label style={{ fontWeight: 600 }}>Loja destino:</label>
-              <select value={lojaDestino} onChange={e => setLojaDestino(e.target.value)} style={styles.select}>
-                {lojas.map((l) => <option key={l} value={l}>{l}</option>)}
-              </select>
-              <button style={styles.button} onClick={() => {
-                if (itemSelecionado) transferirItem();
-                else if (codigoDigitado.trim()) {
-                  buscarCodigo();
-                  setTimeout(() => {
-                    if (itensEncontrados.length === 1) { setItemSelecionado(itensEncontrados[0]); setTimeout(transferirItem, 100); }
-                    else alert("Selecione o item após buscar.");
-                  }, 100);
-                } else alert("Selecione um item ou digite o código.");
-              }}>Transferir</button>
-            </div>
-
+    <div style={styles.mainApp}>
+      <h1 style={{ textAlign: "center", margin: 40 }}>Transferências</h1>
+      <button onClick={onLogout} style={styles.logoutButton}>Logout</button>
+      <div style={styles.container}>
+        <div style={styles.panel}>
+          <div style={styles.inputSection}>
+            <input
+              type="text"
+              value={codigoDigitado}
+              onChange={handleInputChange}
+              onBlur={buscarCodigo}
+              style={styles.input}
+              placeholder="Digite o código ou código de barras"
+            />
+            <button onClick={buscarCodigo} style={styles.inputButton}>Buscar</button>
+          </div>
+          <div style={styles.resultados}>
             {itensEncontrados.length > 0 && (
-              <div style={styles.cardContainer}>
-                <h3>Itens encontrados:</h3>
-                <div style={styles.itensList}>
+              <div>
+                <h3>Resultados encontrados:</h3>
+                <ul>
                   {itensEncontrados.map((item) => (
-                    <div key={item.id} onClick={() => setItemSelecionado(item)}
-                      style={{
-                        ...styles.card,
-                        border: item.id === itemSelecionado?.id ? "2px solid #4a90e2" : "2px solid transparent",
-                      }}
-                    >
-                      <div style={{ flex: 2 }}>
-                        <h4>{item.nome}</h4>
-                        <p><strong>Referência:</strong> {item.referencia}</p>
-                      </div>
-                      <div style={{ minWidth: 150, textAlign: "center" }}>
-                        <Barcode value={item.codigoBarra} height={40} width={1.5} />
-                        <div style={styles.lojaTagSmall}>{lojaDestino}</div>
-                      </div>
-                    </div>
+                    <li key={item.id}>
+                      <span>{item.nome}</span>
+                      <button
+                        onClick={() => setItemSelecionado(item)}
+                        style={styles.selectItemButton}
+                      >
+                        Selecionar
+                      </button>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </div>
             )}
-          </>
-        )}
-
-        {abaAtiva === "transferidos" && (
-          <>
-            <h2>Histórico de Transferências</h2>
-            {historicoFiltrado.length === 0 ? <p>Nenhuma transferência realizada.</p> :
-              <div style={styles.gridTransfer}>
-                {historicoFiltrado.map(tr => (
-                  <div key={tr.id} style={styles.cardTransfer}>
-                    <h4>{tr.nomeItem}</h4>
-                    <p><strong>Cód. Barras:</strong> {tr.codigoBarra}</p>
-                    <p><strong>Referência:</strong> {tr.referencia}</p>
-                    <p><strong>Destino:</strong> {tr.lojaDestino}</p>
-                    <p style={{ fontSize: 12, color: "#888" }}>Em {formatarData(tr.data)}</p>
-                    <Barcode value={tr.codigoBarra} height={40} width={1.5} />
-                  </div>
-                ))}
+            {itemSelecionado && (
+              <div style={styles.selectedItem}>
+                <h4>Item selecionado:</h4>
+                <p>{itemSelecionado.nome}</p>
+                <p>Referência: {itemSelecionado.referencia}</p>
+                <Barcode value={itemSelecionado.codigoBarra} />
+                <button onClick={transferirItem} style={styles.transferButton}>Transferir</button>
               </div>
-            }
-          </>
-        )}
-
-        {abaAtiva === "admin" && isAdmin && (
-          <>
-            <h2>Administração</h2>
-            <p>Excluir histórico de cada loja:</p>
-            {lojas.map(loja => (
-              <button key={loja} style={{ ...styles.button, background: "#c0392b", margin: "6px 0" }}
-                onClick={() => excluirTransferencias(loja)}>
-                Excluir transferências de {loja}
-              </button>
+            )}
+          </div>
+        </div>
+        <div style={styles.transferencias}>
+          <h2>Minhas Transferências</h2>
+          <ul>
+            {transferencias[usuarioAtual] && transferencias[usuarioAtual].map((item) => (
+              <li key={item.id}>
+                {item.nomeItem} - Destino: {item.lojaDestino}
+              </li>
             ))}
-          </>
-        )}
-      </main>
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }
 
 const styles = {
-  login: { height: "100vh", background: "#f7f7f7", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" },
-  logoLogin: { width: 220, marginBottom: 25 },
-  inputContainer: { display: "flex", flexDirection: "column", gap: 15, marginBottom: 20 },
-  input: { padding: 14, borderRadius: 12, border: "1.5px solid #ccc", fontSize: 18, fontWeight: 500, outline: "none" },
-  loginButton: { padding: "16px 40px", fontSize: 22, background: "#4a90e2", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer" },
-  container: { fontFamily: "Arial, sans-serif", background: "#fff", minHeight: "100vh", maxWidth: 960, margin: "0 auto", padding: "10px 30px 30px 30px" },
-  header: { background: "#222", color: "#fff", padding: "18px 30px", display: "flex", alignItems: "center", gap: 20, borderRadius: 10, marginBottom: 30 },
-  logo: { width: 90 },
-  title: { fontSize: 24, fontWeight: 700, flexGrow: 1 },
-  logoutButton: { backgroundColor: "#e03e2f", color: "#fff", border: "none", borderRadius: 8, padding: "10px 22px", fontSize: 15, cursor: "pointer" },
-  tabs: { display: "flex", gap: 24, marginBottom: 30 },
-  tab: { padding: "12px 32px", backgroundColor: "transparent", border: "none", fontWeight: 600, fontSize: 16, color: "#666", cursor: "pointer" },
-  tabActive: { padding: "12px 32px", backgroundColor: "transparent", border: "none", borderBottom: "3px solid #4a90e2", fontWeight: 700, fontSize: 16, color: "#222", cursor: "default" },
-  section: { background: "#fafafa", borderRadius: 12, padding: 20 },
-  buscaContainer: { display: "flex", gap: 14, marginBottom: 25 },
-  button: { backgroundColor: "#4a90e2", border: "none", borderRadius: 12, color: "#fff", fontWeight: 600, fontSize: 16, padding: "14px 22px", cursor: "pointer" },
-  cardContainer: { maxHeight: 360, overflowY: "auto", marginBottom: 20 },
-  itensList: { display: "flex", flexDirection: "column", gap: 14 },
-  card: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: 16, borderRadius: 10, background: "#fff", cursor: "pointer", boxShadow: "0 2px 6px rgba(0,0,0,0.1)" },
-  select: { padding: 10, borderRadius: 8, fontSize: 16, border: "1px solid #ccc" },
-  gridTransfer: { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(230px,1fr))", gap: 18 },
-  cardTransfer: { padding: 12, borderRadius: 10, background: "#fff", boxShadow: "0 2px 6px rgba(0,0,0,0.1)", display: "flex", flexDirection: "column", gap: 6 },
-  lojaTagSmall: { fontSize: 12, color: "#fff", background: "#4a90e2", borderRadius: 6, padding: "2px 6px", marginTop: 4, display: "inline-block" }
+  logoLogin: {
+    width: "220px",
+    marginBottom: "25px",
+    objectFit: "contain",  // Garante que a imagem se ajuste corretamente
+    objectPosition: "center",  // Centraliza a imagem
+    border: "none",  // Remove qualquer borda que possa ter sido aplicada
+    boxShadow: "none",  // Remove qualquer sombra aplicada
+  },
+  login: {
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
+    alignItems: "center",
+    height: "100vh",
+    backgroundColor: "#f4f4f4",
+    textAlign: "center",
+  },
+  inputContainer: {
+    display: "flex",
+    flexDirection: "column",
+    marginBottom: 30,
+  },
+  input: {
+    padding: "10px",
+    margin: "10px",
+    borderRadius: "5px",
+    border: "1px solid #ddd",
+    width: "250px",
+  },
+  loginButton: {
+    padding: "10px 20px",
+    backgroundColor: "#4CAF50",
+    color: "white",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+  },
+  mainApp: {
+    fontFamily: "Arial, sans-serif",
+    backgroundColor: "#f9f9f9",
+    padding: "20px",
+    maxWidth: "1200px",
+    margin: "0 auto",
+  },
+  panel: {
+    display: "flex",
+    flexDirection: "column",
+  },
+  inputSection: {
+    display: "flex",
+    marginBottom: "20px",
+  },
+  inputButton: {
+    padding: "10px 20px",
+    backgroundColor: "#3faffa",
+    color: "white",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+  },
+  resultados: {
+    marginTop: "20px",
+  },
+  selectItemButton: {
+    padding: "5px 10px",
+    backgroundColor: "#ffb6c1",
+    color: "white",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+  },
+  transferButton: {
+    padding: "10px 20px",
+    backgroundColor: "#4CAF50",
+    color: "white",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+  },
+  selectedItem: {
+    marginTop: "20px",
+  },
+  logoutButton: {
+    padding: "10px 20px",
+    backgroundColor: "#f44336",
+    color: "white",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+    marginBottom: "30px",
+  },
 };
