@@ -70,12 +70,12 @@ function Login({ onLogin }) {
   return (
     <div style={styles.login}>
       <img src={logoUrl} alt="Logo" style={styles.logoLogin} />
-      <h1 style={{ marginBottom: 30, color: "#222" }}>Bem-vindo(a)!</h1>
+      <h1 style={styles.title}>Bem-vindo(a)!</h1>
       <div style={styles.inputContainer}>
         <select
           value={usuario}
           onChange={(e) => setUsuario(e.target.value)}
-          style={styles.input}
+          style={styles.select}
         >
           {logins.map((u) => (
             <option key={u.usuario} value={u.usuario}>
@@ -242,50 +242,61 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
   };
 
   return (
-    <div style={{ padding: 20 }}>
-      <div style={{ marginBottom: 20 }}>
+    <div style={styles.mainApp}>
+      <header style={styles.header}>
         <h2>Transferências</h2>
-        <button onClick={onLogout}>Logout</button>
-      </div>
-      <div style={{ marginBottom: 20 }}>
+        <button onClick={onLogout} style={styles.logoutButton}>Logout</button>
+      </header>
+      
+      <div style={styles.searchBox}>
         <input
           type="text"
           value={codigoDigitado}
           onChange={handleInputChange}
           placeholder="Digite o código ou código de barras"
-          style={{ padding: 10, fontSize: 16 }}
+          style={styles.inputSearch}
         />
-        <button onClick={buscarCodigo}>Buscar</button>
+        <button onClick={buscarCodigo} style={styles.searchButton}>Buscar</button>
       </div>
-      <div>
-        {itensEncontrados.length > 0 && (
-          <ul>
-            {itensEncontrados.map((item) => (
-              <li key={item.id} onClick={() => setItemSelecionado(item)}>
-                <span>{item.nome} ({item.codigo})</span>
-                <Barcode value={item.codigoBarra} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      
+      {itensEncontrados.length > 0 && (
+        <ul style={styles.itemList}>
+          {itensEncontrados.map((item) => (
+            <li
+              key={item.id}
+              onClick={() => setItemSelecionado(item)}
+              style={styles.itemListItem}
+            >
+              <span>{item.nome} ({item.codigo})</span>
+              <Barcode value={item.codigoBarra} />
+            </li>
+          ))}
+        </ul>
+      )}
+      
       {itemSelecionado && (
-        <div style={{ marginTop: 20 }}>
+        <div style={styles.itemDetails}>
           <h3>Item Selecionado</h3>
-          <p>{itemSelecionado.nome}</p>
+          <p><strong>{itemSelecionado.nome}</strong></p>
           <p>Referência: {itemSelecionado.referencia}</p>
           <p>Código: {itemSelecionado.codigo}</p>
-          <select
-            value={lojaDestino}
-            onChange={(e) => setLojaDestino(e.target.value)}
-          >
-            {lojas.map((loja) => (
-              <option key={loja} value={loja}>
-                {loja}
-              </option>
-            ))}
-          </select>
-          <button onClick={transferirItem}>Transferir Item</button>
+          
+          <div>
+            <label>Loja Destino: </label>
+            <select
+              value={lojaDestino}
+              onChange={(e) => setLojaDestino(e.target.value)}
+              style={styles.select}
+            >
+              {lojas.map((loja) => (
+                <option key={loja} value={loja}>
+                  {loja}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button onClick={transferirItem} style={styles.transferButton}>Transferir Item</button>
         </div>
       )}
     </div>
@@ -293,9 +304,56 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
 }
 
 const styles = {
-  login: { display: "flex", flexDirection: "column", alignItems: "center", padding: 20 },
-  logoLogin: { width: 150, marginBottom: 20 },
-  inputContainer: { display: "flex", flexDirection: "column", width: 300 },
-  input: { marginBottom: 10, padding: 8, fontSize: 16, border: "1px solid #ccc" },
-  loginButton: { padding: 10, fontSize: 18, backgroundColor: "#007bff", color: "#fff", border: "none", cursor: "pointer" },
+  login: {
+    display: "flex", flexDirection: "column", alignItems: "center", padding: "40px 20px", textAlign: "center", backgroundColor: "#f4f6f9", height: "100vh", justifyContent: "center"
+  },
+  logoLogin: {
+    width: 150, marginBottom: 20
+  },
+  title: {
+    fontSize: 24, marginBottom: 20, color: "#333"
+  },
+  inputContainer: {
+    display: "flex", flexDirection: "column", width: "100%", maxWidth: "320px", gap: 10
+  },
+  input: {
+    padding: "10px", fontSize: "16px", border: "1px solid #ccc", borderRadius: "8px"
+  },
+  select: {
+    padding: "10px", fontSize: "16px", border: "1px solid #ccc", borderRadius: "8px"
+  },
+  loginButton: {
+    padding: "10px 20px", fontSize: "18px", backgroundColor: "#007bff", color: "#fff", border: "none", borderRadius: "8px", cursor: "pointer"
+  },
+  mainApp: {
+    padding: "20px", maxWidth: "900px", margin: "0 auto"
+  },
+  header: {
+    display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px"
+  },
+  logoutButton: {
+    padding: "10px", fontSize: "16px", backgroundColor: "#f44336", color: "#fff", border: "none", cursor: "pointer", borderRadius: "8px"
+  },
+  searchBox: {
+    display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px"
+  },
+  inputSearch: {
+    padding: "10px", fontSize: "16px", border: "1px solid #ccc", borderRadius: "8px", width: "60%"
+  },
+  searchButton: {
+    padding: "10px 20px", fontSize: "16px", backgroundColor: "#28a745", color: "#fff", border: "none", borderRadius: "8px", cursor: "pointer"
+  },
+  itemList: {
+    marginTop: "20px", padding: "0", listStyle: "none"
+  },
+  itemListItem: {
+    padding: "10px", border: "1px solid #ccc", margin: "5px 0", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", borderRadius: "8px"
+  },
+  itemDetails: {
+    marginTop: "20px", padding: "20px", border: "1px solid #ccc", borderRadius: "8px", backgroundColor: "#f9f9f9"
+  },
+  transferButton: {
+    marginTop: "10px", padding: "10px 20px", fontSize: "16px", backgroundColor: "#007bff", color: "#fff", border: "none", borderRadius: "8px", cursor: "pointer"
+  }
 };
+
