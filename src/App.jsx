@@ -13,20 +13,14 @@ const logins = [
 
 const senhaPadrao = "1234";
 const senhaAdmin = "demo1234";
-
-const lojas = [
-  "NovoShopping",
-  "RibeiraoShopping",
-  "DomPedro",
-  "Iguatemi",
-];
-
+const lojas = ["NovoShopping", "RibeiraoShopping", "DomPedro", "Iguatemi"];
 const logoUrl = "/logo.jpeg";
+const lojaPadrao = "RibeiraoShopping";
 
 export default function App() {
   const [logado, setLogado] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [usuarioAtual, setUsuarioAtual] = useState("");
+  const [usuarioAtual, setUsuarioAtual] = useState(null);
 
   useEffect(() => {
     const storedLogin = localStorage.getItem("logado");
@@ -41,7 +35,6 @@ export default function App() {
     const usuarioEncontrado = logins.find(
       (u) => u.usuario.toLowerCase() === usuario.toLowerCase()
     );
-
     if (
       usuarioEncontrado &&
       ((usuarioEncontrado.isAdmin && senha === senhaAdmin) ||
@@ -64,22 +57,18 @@ export default function App() {
     localStorage.removeItem("usuarioAtual");
     setLogado(false);
     setIsAdmin(false);
-    setUsuarioAtual("");
+    setUsuarioAtual(null);
   }
 
   return logado ? (
-    <MainApp
-      onLogout={handleLogout}
-      isAdmin={isAdmin}
-      usuarioAtual={usuarioAtual}
-    />
+    <MainApp onLogout={handleLogout} isAdmin={isAdmin} usuarioAtual={usuarioAtual} />
   ) : (
     <Login onLogin={handleLogin} />
   );
 }
 
 function Login({ onLogin }) {
-  const [usuario, setUsuario] = useState("NovoShopping");
+  const [usuario, setUsuario] = useState("");
   const [senha, setSenha] = useState("");
 
   const handleLoginClick = () => {
@@ -94,8 +83,9 @@ function Login({ onLogin }) {
         <select
           value={usuario}
           onChange={(e) => setUsuario(e.target.value)}
-          style={{ ...styles.input, padding: "14px" }}
+          style={styles.input}
         >
+          <option value="">Selecione o usuário</option>
           {logins.map((l) => (
             <option key={l.usuario} value={l.usuario}>
               {l.usuario}
@@ -118,20 +108,17 @@ function Login({ onLogin }) {
 }
 
 function MainApp({ onLogout, isAdmin, usuarioAtual }) {
-  const [abaAtiva, setAbaAtiva] = useState("transferencia");
+  const [abaAtiva, setAbaAtiva] = useState("itens");
   const [itens, setItens] = useState([]);
   const [transferencias, setTransferencias] = useState(() => {
     const dados = localStorage.getItem("transferenciasDemocrata");
     return dados ? JSON.parse(dados) : [];
   });
-
   const [codigoDigitado, setCodigoDigitado] = useState("");
   const [itensEncontrados, setItensEncontrados] = useState([]);
   const [itemSelecionado, setItemSelecionado] = useState(null);
-  const [lojaDestino, setLojaDestino] = useState(lojas[0]);
-  const [quemSolicitou, setQuemSolicitou] = useState("");
+  const [lojaDestino, setLojaDestino] = useState(lojaPadrao);
 
-  // Carregar itens do Excel
   useEffect(() => {
     fetch("/itens.xls")
       .then((res) => res.arrayBuffer())
@@ -139,15 +126,13 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
         const workbook = XLSX.read(data, { type: "array" });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const dados = XLSX.utils.sheet_to_json(sheet, { defval: "" });
-        if (dados.length === 0) return;
         const lista = dados.map((linha, i) => {
           const codigoProduto = String(linha["Código Produto"] || "").trim();
           const codigosBarras = (String(linha["Códigos de Barras"] || ""))
             .split("|")
             .map((c) => c.trim())
             .filter((c) => c.length > 0);
-          const codigoBarra =
-            codigosBarras.length > 0 ? codigosBarras[codigosBarras.length - 1] : codigoProduto;
+          const codigoBarra = codigosBarras.length > 0 ? codigosBarras[codigosBarras.length - 1] : codigoProduto;
           const descricao = String(linha["Descrição Completa"] || "Sem descrição").trim();
           const referencia = String(linha["Referência"] || "-").trim();
           return {
@@ -171,7 +156,6 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
     localStorage.setItem("transferenciasDemocrata", JSON.stringify(transferencias));
   }, [transferencias]);
 
-  // Bipar código
   const handleInputChange = (e) => {
     const valor = e.target.value;
     setCodigoDigitado(valor);
@@ -185,7 +169,9 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
       );
       if (encontrados.length === 1) {
         setItemSelecionado(encontrados[0]);
-        setTimeout(() => transferirItemAuto(encontrados[0]), 150);
+        setTimeout(() => {
+          transferirItemAuto(encontrados[0]);
+        }, 150);
         setCodigoDigitado("");
       } else if (encontrados.length > 1) {
         setItensEncontrados(encontrados);
@@ -196,7 +182,6 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
 
   const transferirItemAuto = (item) => {
     if (!item) return;
-    if (!quemSolicitou.trim()) return alert("Informe quem solicitou a transferência!");
     const novaTransferencia = {
       id: Date.now().toString() + "-" + Math.random(),
       itemId: item.id,
@@ -205,7 +190,6 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
       nomeItem: item.nome,
       referencia: item.referencia,
       lojaDestino,
-      quemSolicitou,
       data: new Date().toISOString(),
     };
     setTransferencias((old) => [novaTransferencia, ...old]);
@@ -217,7 +201,6 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
 
   const transferirItem = () => {
     if (!itemSelecionado) return alert("Selecione um item para transferir.");
-    if (!quemSolicitou.trim()) return alert("Informe quem solicitou a transferência!");
     const novaTransferencia = {
       id: Date.now().toString() + "-" + Math.random(),
       itemId: itemSelecionado.id,
@@ -226,7 +209,6 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
       nomeItem: itemSelecionado.nome,
       referencia: itemSelecionado.referencia,
       lojaDestino,
-      quemSolicitou,
       data: new Date().toISOString(),
     };
     setTransferencias((old) => [novaTransferencia, ...old]);
@@ -243,13 +225,36 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
     }
   };
 
+  const buscarCodigo = () => {
+    if (!codigoDigitado.trim()) return alert("Digite o código, referência ou código de barras.");
+    const busca = codigoDigitado.trim().toLowerCase();
+    const encontrados = itens.filter(
+      (i) =>
+        i.codigo.toLowerCase() === busca ||
+        i.codigoBarra.toLowerCase() === busca ||
+        i.referencia.toLowerCase() === busca
+    );
+    if (encontrados.length === 0) {
+      alert("Nenhum item encontrado.");
+      setItensEncontrados([]);
+      setItemSelecionado(null);
+      return;
+    }
+    setItensEncontrados(encontrados);
+    if (encontrados.length === 1) setItemSelecionado(encontrados[0]);
+    setCodigoDigitado("");
+  };
+
+  const formatarData = (iso) =>
+    new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+
   const historicoFiltrado = transferencias;
 
   return (
     <div style={styles.container}>
       <header style={styles.header}>
         <img src={logoUrl} alt="Logo" style={styles.logo} />
-        <h1 style={styles.title}>Transferência de Produtos</h1>
+        <h1 style={styles.title}>Democrata - Transferência de Produtos</h1>
         <button onClick={onLogout} style={styles.logoutButton}>
           Sair
         </button>
@@ -257,8 +262,8 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
 
       <nav style={styles.tabs}>
         <button
-          style={abaAtiva === "transferencia" ? styles.tabActive : styles.tab}
-          onClick={() => setAbaAtiva("transferencia")}
+          style={abaAtiva === "itens" ? styles.tabActive : styles.tab}
+          onClick={() => setAbaAtiva("itens")}
         >
           Transferência
         </button>
@@ -266,7 +271,7 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
           style={abaAtiva === "transferidos" ? styles.tabActive : styles.tab}
           onClick={() => setAbaAtiva("transferidos")}
         >
-          Histórico
+          Itens transferidos
         </button>
         {isAdmin && (
           <button
@@ -279,17 +284,17 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
       </nav>
 
       <main style={styles.section}>
-        {abaAtiva === "transferencia" && (
+        {abaAtiva === "itens" && (
           <>
-            <h2>Buscar e Transferir Item</h2>
+            <h2 style={{ color: "#1a1a1a", marginBottom: 20 }}>Buscar e Transferir Item</h2>
             <div style={styles.buscaContainer}>
               <input
                 type="text"
                 placeholder="Código de Barras, Referência ou Código"
                 value={codigoDigitado}
                 onChange={handleInputChange}
-                autoFocus
                 style={{ ...styles.input, width: 340 }}
+                autoFocus
               />
             </div>
 
@@ -306,22 +311,23 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
                   </option>
                 ))}
               </select>
-
-              <label style={{ fontWeight: 600 }}>Quem solicitou:</label>
-              <input
-                type="text"
-                value={quemSolicitou}
-                onChange={(e) => setQuemSolicitou(e.target.value)}
-                placeholder="Informe quem solicitou"
-                style={styles.input}
-              />
             </div>
 
             <button
               style={styles.button}
               onClick={() => {
                 if (itemSelecionado) transferirItem();
-                else if (codigoDigitado.trim()) transferirItemAuto(itensEncontrados[0]);
+                else if (codigoDigitado.trim()) {
+                  buscarCodigo();
+                  setTimeout(() => {
+                    if (itensEncontrados.length === 1) {
+                      setItemSelecionado(itensEncontrados[0]);
+                      setTimeout(transferirItem, 100);
+                    } else {
+                      alert("Selecione o item após buscar.");
+                    }
+                  }, 100);
+                } else alert("Selecione um item ou digite o código para buscar.");
               }}
             >
               Transferir
@@ -337,17 +343,19 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
                       onClick={() => setItemSelecionado(item)}
                       style={{
                         ...styles.card,
-                        border:
-                          item.id === itemSelecionado?.id
-                            ? "2px solid #3498db"
-                            : "1px solid #ccc",
+                        border: item.id === itemSelecionado?.id ? "2px solid #4a90e2" : "2px solid transparent",
                       }}
                     >
-                      <h4>{item.nome}</h4>
-                      <p>
-                        <strong>Referência:</strong> {item.referencia}
-                      </p>
-                      <Barcode value={item.codigoBarra} height={40} width={1.5} />
+                      <div style={{ flex: 2 }}>
+                        <h4>{item.nome}</h4>
+                        <p>
+                          <strong>Referência:</strong> {item.referencia}
+                        </p>
+                      </div>
+                      <div style={{ minWidth: 150, textAlign: "center" }}>
+                        <Barcode value={item.codigoBarra} height={40} width={1.5} />
+                        <div style={styles.lojaTagSmall}>{lojaDestino}</div>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -358,26 +366,27 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
 
         {abaAtiva === "transferidos" && (
           <>
-            <h2>Histórico de Transferências</h2>
+            <h2 style={{ color: "#1a1a1a", marginBottom: 20 }}>Histórico de Transferências</h2>
             {historicoFiltrado.length === 0 ? (
-              <p>Nenhuma transferência realizada.</p>
+              <p style={{ color: "#666" }}>Nenhuma transferência realizada.</p>
             ) : (
               <div style={styles.gridTransfer}>
                 {historicoFiltrado.map((tr) => (
                   <div key={tr.id} style={styles.cardTransfer}>
-                    <h4>{tr.nomeItem}</h4>
-                    <p>
+                    <h4 style={{ marginTop: 0, marginBottom: 6 }}>{tr.nomeItem}</h4>
+                    <p style={{ margin: "2px 0" }}>
                       <strong>Cód. Barras:</strong> {tr.codigoBarra}
                     </p>
-                    <p>
+                    <p style={{ margin: "2px 0" }}>
                       <strong>Referência:</strong> {tr.referencia}
                     </p>
-                    <p>
+                    <p style={{ margin: "2px 0" }}>
                       <strong>Destino:</strong> {tr.lojaDestino}
                     </p>
-                    <p>
-                      <strong>Solicitado por:</strong> {tr.quemSolicitou}
+                    <p style={{ fontSize: 12, color: "#888", margin: "2px 0 8px 0" }}>
+                      Em {formatarData(tr.data)}
                     </p>
+                    <Barcode value={tr.codigoBarra} height={40} width={1.5} />
                   </div>
                 ))}
               </div>
@@ -387,10 +396,10 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
 
         {abaAtiva === "admin" && isAdmin && (
           <>
-            <h2>Administração</h2>
+            <h2 style={{ color: "#1a1a1a", marginBottom: 20 }}>Administração</h2>
             <button
-              style={{ ...styles.button, background: "#c0392b" }}
               onClick={excluirTransferencias}
+              style={{ ...styles.button, background: "#c0392b", marginTop: 18 }}
             >
               Excluir todos os itens transferidos
             </button>
@@ -413,14 +422,7 @@ const styles = {
   },
   logoLogin: { width: 220, marginBottom: 25 },
   inputContainer: { display: "flex", flexDirection: "column", gap: 15, marginBottom: 20 },
-  input: {
-    padding: 14,
-    borderRadius: 12,
-    border: "1.5px solid #ccc",
-    fontSize: 18,
-    fontWeight: 500,
-    outline: "none",
-  },
+  input: { padding: 14, borderRadius: 12, border: "1.5px solid #ccc", fontSize: 18, outline: "none" },
   loginButton: {
     padding: "16px 40px",
     fontSize: 22,
@@ -429,24 +431,23 @@ const styles = {
     border: "none",
     borderRadius: 10,
     cursor: "pointer",
-    boxShadow: "0 6px 12px rgba(74,144,226,0.4)",
   },
-  container: { fontFamily: "Arial, sans-serif", background: "#fff", minHeight: "100vh", maxWidth: 960, margin: "0 auto", padding: "10px 30px 30px 30px" },
-  header: { display: "flex", alignItems: "center", gap: 20, marginBottom: 30 },
+  container: { fontFamily: "Arial, sans-serif", background: "#fff", minHeight: "100vh", maxWidth: 960, margin: "0 auto", padding: "10px 30px 30px 30px", boxSizing: "border-box" },
+  header: { background: "#222", color: "#fff", padding: "18px 30px", display: "flex", alignItems: "center", gap: 20, borderRadius: 10, marginBottom: 30 },
   logo: { width: 90 },
   title: { fontSize: 24, fontWeight: "700", flexGrow: 1 },
   logoutButton: { backgroundColor: "#e03e2f", color: "#fff", border: "none", borderRadius: 8, padding: "10px 22px", fontSize: 15, cursor: "pointer" },
-  tabs: { display: "flex", gap: 24, marginBottom: 30 },
-  tab: { padding: "12px 32px", backgroundColor: "#eee", border: "none", borderRadius: 8, cursor: "pointer" },
-  tabActive: { padding: "12px 32px", backgroundColor: "#3498db", border: "none", borderRadius: 8, color: "#fff", cursor: "default" },
-  section: { background: "#fafafa", borderRadius: 12, padding: "12px 25px 25px 25px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)", minHeight: 300 },
-  buscaContainer: { display: "flex", gap: 14, marginBottom: 25 },
-  button: { backgroundColor: "#4a90e2", border: "none", borderRadius: 12, color: "#fff", fontWeight: "600", fontSize: 16, padding: "14px 22px", cursor: "pointer" },
-  cardContainer: { maxHeight: 360, overflowY: "auto", marginBottom: 20 },
-  itensList: { display: "flex", flexDirection: "column", gap: 14 },
-  select: { width: 220, padding: "7px 12px", fontSize: 15, borderRadius: 7, border: "1.2px solid #ccc", marginTop: 6, maxWidth: 240, minWidth: 110 },
-  gridTransfer: { display: "flex", flexWrap: "wrap", gap: 14 },
-  card: { backgroundColor: "#fff", borderRadius: 10, boxShadow: "0 3px 10px rgba(0,0,0,0.1)", padding: "12px 28px", width: "100%", maxWidth: 750, minHeight: 80, cursor: "pointer", display: "flex", flexDirection: "row", alignItems: "center", gap: 40 },
-  cardTransfer: { backgroundColor: "#fff", padding: 18, borderRadius: 10, boxShadow: "0 2px 10px rgba(0,0,0,0.08)", lineHeight: 1.2, marginBottom: 0 },
-  lojaTagSmall: { fontSize: 9, color: "#1761a0", fontWeight: 600, marginLeft: 5 },
+  tabs: { display: "flex", gap: 24, marginBottom: 30, borderBottom: "2px solid #eee" },
+  tab: { padding: "12px 32px", border: "none", borderBottom: "3px solid transparent", fontWeight: "600", fontSize: 16, color: "#666", cursor: "pointer" },
+  tabActive: { padding: "12px 32px", border: "none", borderBottom: "3px solid #4a90e2", fontWeight: "700", fontSize: 16, color: "#222", cursor: "default" },
+  section: { background: "#fafafa", borderRadius: 12, padding: "12px 22px 22px 22px", minHeight: 400 },
+  buscaContainer: { marginBottom: 20 },
+  button: { padding: "14px 32px", fontSize: 18, background: "#4a90e2", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer" },
+  select: { padding: 14, borderRadius: 12, border: "1.5px solid #ccc", fontSize: 18, outline: "none", width: "200px" },
+  cardContainer: { marginTop: 20 },
+  itensList: { display: "flex", flexWrap: "wrap", gap: 18 },
+  card: { borderRadius: 10, padding: 18, background: "#fff", display: "flex", alignItems: "center", gap: 18, cursor: "pointer", boxShadow: "0 2px 5px rgba(0,0,0,0.08)" },
+  lojaTagSmall: { marginTop: 8, fontSize: 13, background: "#f0f0f0", padding: "3px 8px", borderRadius: 6, display: "inline-block" },
+  gridTransfer: { display: "flex", flexWrap: "wrap", gap: 22 },
+  cardTransfer: { padding: 12, borderRadius: 10, background: "#fff", width: 200, textAlign: "center", boxShadow: "0 2px 6px rgba(0,0,0,0.12)" },
 };
