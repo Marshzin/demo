@@ -4,15 +4,19 @@ import Barcode from "react-barcode";
 import "./styles.css";
 
 const logins = [
-  { usuario: "NovoShopping", loja: "NovoShopping", senha: "1234", isAdmin: false },
-  { usuario: "RibeiraoShopping", loja: "RibeiraoShopping", senha: "1234", isAdmin: false },
-  { usuario: "DomPedro", loja: "DomPedro", senha: "1234", isAdmin: false },
-  { usuario: "Iguatemi", loja: "Iguatemi", senha: "1234", isAdmin: false },
-  { usuario: "Administrador", loja: "Administrador", senha: "demo1234", isAdmin: true },
+  { usuario: "NovoShopping", loja: "NovoShopping", isAdmin: false },
+  { usuario: "RibeiraoShopping", loja: "RibeiraoShopping", isAdmin: false },
+  { usuario: "DomPedro", loja: "DomPedro", isAdmin: false },
+  { usuario: "Iguatemi", loja: "Iguatemi", isAdmin: false },
+  { usuario: "Administrador", loja: "Admin", isAdmin: true },
 ];
+
+const senhaPadrao = "1234";
+const senhaAdmin = "demo1234";
 
 const lojas = ["NovoShopping", "RibeiraoShopping", "DomPedro", "Iguatemi"];
 const lojaPadrao = "RibeiraoShopping";
+
 const logoUrl = "/logo.jpeg";
 
 export default function App() {
@@ -20,27 +24,40 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [usuarioAtual, setUsuarioAtual] = useState(null);
 
+  // Título da aba do navegador
+  useEffect(() => {
+    document.title = "Painel de Transferência";
+  }, []);
+
   useEffect(() => {
     const storedLogin = localStorage.getItem("logado");
     const storedIsAdmin = localStorage.getItem("isAdmin") === "true";
     const storedUsuario = localStorage.getItem("usuarioAtual");
+
     if (storedLogin) setLogado(true);
     if (storedIsAdmin) setIsAdmin(true);
     if (storedUsuario) setUsuarioAtual(storedUsuario);
   }, []);
 
   function handleLogin(usuario, senha) {
-    const usuarioEncontrado = logins.find((u) => u.usuario === usuario);
-    if (usuarioEncontrado && senha === usuarioEncontrado.senha) {
-      localStorage.setItem("logado", true);
-      localStorage.setItem("isAdmin", usuarioEncontrado.isAdmin);
-      localStorage.setItem("usuarioAtual", usuarioEncontrado.usuario);
-      setLogado(true);
-      setIsAdmin(usuarioEncontrado.isAdmin);
-      setUsuarioAtual(usuarioEncontrado.usuario);
-    } else {
-      alert("Usuário ou senha inválidos.");
+    const usuarioEncontrado = logins.find(
+      (u) => u.usuario.toLowerCase() === usuario.toLowerCase()
+    );
+
+    if (usuarioEncontrado) {
+      if ((usuarioEncontrado.isAdmin && senha === senhaAdmin) || (!usuarioEncontrado.isAdmin && senha === senhaPadrao)) {
+        localStorage.setItem("logado", true);
+        localStorage.setItem("isAdmin", usuarioEncontrado.isAdmin);
+        localStorage.setItem("usuarioAtual", usuarioEncontrado.usuario);
+
+        setLogado(true);
+        setIsAdmin(usuarioEncontrado.isAdmin);
+        setUsuarioAtual(usuarioEncontrado.usuario);
+        return;
+      }
     }
+
+    alert("Usuário ou senha inválidos.");
   }
 
   function handleLogout() {
@@ -63,14 +80,16 @@ function Login({ onLogin }) {
   const [usuario, setUsuario] = useState("NovoShopping");
   const [senha, setSenha] = useState("");
 
-  const handleLogin = () => {
+  const handleLoginClick = () => {
     onLogin(usuario, senha);
   };
 
   return (
     <div style={styles.login}>
       <img src={logoUrl} alt="Logo" style={styles.logoLogin} />
-      <h1 style={{ marginBottom: 30, color: "#222" }}>Painel ERP - Login</h1>
+      <h1 style={{ marginBottom: 30, color: "#222" }}>
+        Transferência de Produtos - Login
+      </h1>
       <div style={styles.inputContainer}>
         <select
           value={usuario}
@@ -91,13 +110,21 @@ function Login({ onLogin }) {
           style={styles.input}
         />
       </div>
-      <button onClick={handleLogin} style={styles.loginButton}>
+      <button onClick={handleLoginClick} style={styles.loginButton}>
         Entrar
       </button>
+      <div style={{ marginTop: 28, fontSize: 13, color: "#999" }}>
+        <div>Usuários disponíveis:</div>
+        <ul style={{ margin: 0, padding: 0, listStyle: "none", color: "#666" }}>
+          <li>Lojas: 1234</li>
+          <li>Admin: demo1234</li>
+        </ul>
+      </div>
     </div>
   );
 }
 
+// ----------------------- MainApp -----------------------
 function MainApp({ onLogout, isAdmin, usuarioAtual }) {
   const [abaAtiva, setAbaAtiva] = useState("itens");
   const [itens, setItens] = useState([]);
@@ -105,7 +132,6 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
     const dados = localStorage.getItem("transferenciasDemocrata");
     return dados ? JSON.parse(dados) : [];
   });
-
   const [codigoDigitado, setCodigoDigitado] = useState("");
   const [itensEncontrados, setItensEncontrados] = useState([]);
   const [itemSelecionado, setItemSelecionado] = useState(null);
@@ -118,19 +144,19 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
         const workbook = XLSX.read(data, { type: "array" });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const dados = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+
         if (dados.length === 0) return;
+
         const lista = dados.map((linha, i) => {
           const codigoProduto = String(linha["Código Produto"] || "").trim();
           const codigosBarras = (String(linha["Códigos de Barras"] || "") || "")
             .split("|")
             .map((c) => c.trim())
             .filter((c) => c.length > 0);
-          const codigoBarra =
-            codigosBarras.length > 0
-              ? codigosBarras[codigosBarras.length - 1]
-              : codigoProduto;
+          const codigoBarra = codigosBarras.length > 0 ? codigosBarras[codigosBarras.length - 1] : codigoProduto;
           const descricao = String(linha["Descrição Completa"] || "Sem descrição").trim();
           const referencia = String(linha["Referência"] || "-").trim();
+
           return {
             id: `${codigoProduto}-${i}`,
             codigo: codigoProduto,
@@ -141,6 +167,7 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
             tamanho: "-",
           };
         });
+
         setItens(lista);
       })
       .catch(() => {
@@ -152,7 +179,31 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
     localStorage.setItem("transferenciasDemocrata", JSON.stringify(transferencias));
   }, [transferencias]);
 
-  const transferirItem = (item) => {
+  // ----------------------- Funções -----------------------
+  const handleInputChange = (e) => {
+    const valor = e.target.value;
+    setCodigoDigitado(valor);
+    if (valor.trim().length >= 5) {
+      const busca = valor.trim().toLowerCase();
+      const encontrados = itens.filter(
+        (i) =>
+          i.codigo.toLowerCase() === busca ||
+          i.codigoBarra.toLowerCase() === busca ||
+          i.referencia.toLowerCase() === busca
+      );
+
+      if (encontrados.length === 1) {
+        setItemSelecionado(encontrados[0]);
+        setTimeout(() => transferirItemAuto(encontrados[0]), 150);
+        setCodigoDigitado("");
+      } else if (encontrados.length > 1) {
+        setItensEncontrados(encontrados);
+        setItemSelecionado(null);
+      }
+    }
+  };
+
+  const transferirItemAuto = (item) => {
     if (!item) return;
     const novaTransferencia = {
       id: Date.now().toString() + "-" + Math.random(),
@@ -168,14 +219,64 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
     setItemSelecionado(null);
     setItensEncontrados([]);
     setCodigoDigitado("");
-    alert("Transferência realizada!");
+    alert("Transferência Realizada automaticamente!");
+  };
+
+  const buscarCodigo = () => {
+    if (!codigoDigitado.trim()) {
+      alert("Digite o código, referência ou código de barras.");
+      return;
+    }
+
+    const busca = codigoDigitado.trim().toLowerCase();
+    const encontrados = itens.filter(
+      (i) =>
+        i.codigo.toLowerCase() === busca ||
+        i.codigoBarra.toLowerCase() === busca ||
+        i.referencia.toLowerCase() === busca
+    );
+
+    if (encontrados.length === 0) {
+      alert("Nenhum item encontrado.");
+      setItensEncontrados([]);
+      setItemSelecionado(null);
+      return;
+    }
+
+    setItensEncontrados(encontrados);
+    if (encontrados.length === 1) setItemSelecionado(encontrados[0]);
+    else setItemSelecionado(null);
+
+    setCodigoDigitado("");
+  };
+
+  const transferirItem = () => {
+    if (!itemSelecionado) return alert("Selecione um item para transferir.");
+
+    const novaTransferencia = {
+      id: Date.now().toString() + "-" + Math.random(),
+      itemId: itemSelecionado.id,
+      codigo: itemSelecionado.codigo,
+      codigoBarra: itemSelecionado.codigoBarra,
+      nomeItem: itemSelecionado.nome,
+      referencia: itemSelecionado.referencia,
+      lojaDestino,
+      data: new Date().toISOString(),
+    };
+
+    setTransferencias((old) => [novaTransferencia, ...old]);
+    alert("Transferência Realizada!!");
+    setItemSelecionado(null);
+    setCodigoDigitado("");
+    setLojaDestino(lojas[1]);
+    setItensEncontrados([]);
   };
 
   const excluirTransferencias = () => {
     if (window.confirm("Tem certeza que deseja excluir todos os itens transferidos?")) {
       setTransferencias([]);
       localStorage.setItem("transferenciasDemocrata", JSON.stringify([]));
-      alert("Todos os itens foram excluídos.");
+      alert("Todos os itens transferidos foram excluídos.");
     }
   };
 
@@ -190,11 +291,14 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
     });
   };
 
+  const historicoFiltrado = transferencias;
+
+  // ----------------------- Render -----------------------
   return (
     <div style={styles.container}>
       <header style={styles.header}>
         <img src={logoUrl} alt="Logo" style={styles.logo} />
-        <h1 style={styles.title}>ERP - {usuarioAtual}</h1>
+        <h1 style={styles.title}>Transferência de Produtos - {usuarioAtual}</h1>
         <button onClick={onLogout} style={styles.logoutButton}>
           Sair
         </button>
@@ -205,13 +309,13 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
           style={abaAtiva === "itens" ? styles.tabActive : styles.tab}
           onClick={() => setAbaAtiva("itens")}
         >
-          Itens
+          Itens cadastrados
         </button>
         <button
           style={abaAtiva === "transferidos" ? styles.tabActive : styles.tab}
           onClick={() => setAbaAtiva("transferidos")}
         >
-          Transferências
+          Itens transferidos
         </button>
         {isAdmin && (
           <button
@@ -224,27 +328,112 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
       </nav>
 
       <main style={styles.section}>
+        {/* ====== ABA ITENS ====== */}
         {abaAtiva === "itens" && (
           <>
-            <h2>Itens cadastrados</h2>
-            <p>Buscar e transferir itens.</p>
+            <h2 style={{ color: "#1a1a1a", marginBottom: 20 }}>Buscar e Transferir Item</h2>
+            <div style={styles.buscaContainer}>
+              <input
+                type="text"
+                placeholder="Código de Barras, Referência ou Código"
+                value={codigoDigitado}
+                onChange={handleInputChange}
+                style={{ ...styles.input, width: 340 }}
+                autoFocus
+              />
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 16, margin: "12px 0 18px 0" }}>
+              <label style={{ fontWeight: 600 }}>Loja destino:</label>
+              <select
+                value={lojaDestino}
+                onChange={(e) => setLojaDestino(e.target.value)}
+                style={styles.select}
+              >
+                {lojas.map((l) => (
+                  <option key={l} value={l}>
+                    {l}
+                  </option>
+                ))}
+              </select>
+              <button
+                style={styles.button}
+                onClick={() => {
+                  if (itemSelecionado) transferirItem();
+                  else if (codigoDigitado.trim()) {
+                    buscarCodigo();
+                    setTimeout(() => {
+                      if (itensEncontrados.length === 1) {
+                        setItemSelecionado(itensEncontrados[0]);
+                        setTimeout(transferirItem, 100);
+                      } else {
+                        alert("Selecione o item após buscar.");
+                      }
+                    }, 100);
+                  } else {
+                    alert("Selecione um item ou digite o código para buscar.");
+                  }
+                }}
+              >
+                Transferir
+              </button>
+            </div>
+
+            {itensEncontrados.length > 0 && (
+              <div style={styles.cardContainer}>
+                <h3>Itens encontrados:</h3>
+                <div style={styles.itensList}>
+                  {itensEncontrados.map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => setItemSelecionado(item)}
+                      style={{
+                        ...styles.card,
+                        backgroundColor: "#fff",
+                        border: item.id === itemSelecionado?.id ? "2px solid #4a90e2" : "2px solid transparent",
+                      }}
+                    >
+                      <div style={{ flex: 2 }}>
+                        <h4>{item.nome}</h4>
+                        <p>
+                          <strong>Referência:</strong> {item.referencia}
+                        </p>
+                      </div>
+                      <div style={{ minWidth: 150, textAlign: "center" }}>
+                        <Barcode value={item.codigoBarra} height={40} width={1.5} />
+                        <div style={styles.lojaTagSmall}>{lojaDestino}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </>
         )}
+
+        {/* ====== ABA TRANSFERIDOS ====== */}
         {abaAtiva === "transferidos" && (
           <>
-            <h2>Histórico de Transferências</h2>
-            {transferencias.length === 0 ? (
-              <p>Nenhuma transferência realizada.</p>
+            <h2 style={{ color: "#1a1a1a", marginBottom: 20 }}>Histórico de Transferências</h2>
+            {historicoFiltrado.length === 0 ? (
+              <p style={{ color: "#666" }}>Nenhuma transferência realizada.</p>
             ) : (
-              <div>
-                {transferencias.map((tr) => (
+              <div style={styles.gridTransfer}>
+                {historicoFiltrado.map((tr) => (
                   <div key={tr.id} style={styles.cardTransfer}>
-                    <h4>{tr.nomeItem}</h4>
-                    <p>
-                      <strong>Ref:</strong> {tr.referencia} |{" "}
+                    <h4 style={{ marginTop: 0, marginBottom: 6 }}>{tr.nomeItem}</h4>
+                    <p style={{ margin: "2px 0" }}>
+                      <strong>Cód. Barras:</strong> {tr.codigoBarra}
+                    </p>
+                    <p style={{ margin: "2px 0" }}>
+                      <strong>Referência:</strong> {tr.referencia}
+                    </p>
+                    <p style={{ margin: "2px 0" }}>
                       <strong>Destino:</strong> {tr.lojaDestino}
                     </p>
-                    <p style={{ fontSize: 12, color: "#888" }}>{formatarData(tr.data)}</p>
+                    <p style={{ fontSize: 12, color: "#888", margin: "2px 0 8px 0" }}>
+                      Em {formatarData(tr.data)}
+                    </p>
                     <Barcode value={tr.codigoBarra} height={40} width={1.5} />
                   </div>
                 ))}
@@ -252,14 +441,16 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
             )}
           </>
         )}
+
+        {/* ====== ABA ADMIN ====== */}
         {abaAtiva === "admin" && isAdmin && (
           <>
-            <h2>Administração</h2>
+            <h2 style={{ color: "#1a1a1a", marginBottom: 20 }}>Administração</h2>
             <button
               onClick={excluirTransferencias}
               style={{ ...styles.button, background: "#c0392b", marginTop: 18 }}
             >
-              Excluir todas as transferências
+              Excluir todos os itens transferidos
             </button>
           </>
         )}
@@ -268,6 +459,7 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
   );
 }
 
+// ----------------------- STYLES -----------------------
 const styles = {
   login: {
     height: "100vh",
@@ -278,93 +470,40 @@ const styles = {
     justifyContent: "center",
     fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
   },
-  logoLogin: { width: 220, marginBottom: 25 },
+  logoLogin: {
+    width: 220,
+    marginBottom: 25,
+    filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.1))",
+  },
   inputContainer: { display: "flex", flexDirection: "column", gap: 15, marginBottom: 20 },
-  input: {
-    padding: 14,
-    borderRadius: 8,
-    border: "1.5px solid #ccc",
-    fontSize: 16,
-    outline: "none",
-  },
+  input: { padding: 14, borderRadius: 12, border: "1.5px solid #ccc", fontSize: 18, fontWeight: "500", outline: "none" },
   loginButton: {
-    padding: "12px 30px",
-    fontSize: 18,
-    background: "#2c3e50",
+    padding: "16px 40px",
+    fontSize: 22,
+    background: "#4a90e2",
     color: "#fff",
     border: "none",
-    borderRadius: 8,
-    cursor: "pointer",
-  },
-  container: {
-    fontFamily: "Arial, sans-serif",
-    background: "#fff",
-    minHeight: "100vh",
-    maxWidth: 960,
-    margin: "0 auto",
-    padding: "10px 30px 30px 30px",
-    boxSizing: "border-box",
-  },
-  header: {
-    background: "#2c3e50",
-    color: "#fff",
-    padding: "18px 30px",
-    display: "flex",
-    alignItems: "center",
-    gap: 20,
     borderRadius: 10,
-    marginBottom: 30,
-  },
-  logo: { width: 70 },
-  title: { fontSize: 20, fontWeight: "700", flexGrow: 1 },
-  logoutButton: {
-    backgroundColor: "#c0392b",
-    color: "#fff",
-    border: "none",
-    borderRadius: 6,
-    padding: "8px 18px",
-    fontSize: 14,
     cursor: "pointer",
+    boxShadow: "0 6px 12px rgba(74,144,226,0.4)",
+    transition: "background-color 0.3s ease",
   },
-  tabs: { display: "flex", gap: 24, marginBottom: 20 },
-  tab: {
-    padding: "10px 24px",
-    backgroundColor: "transparent",
-    border: "none",
-    fontWeight: "600",
-    color: "#666",
-    cursor: "pointer",
-  },
-  tabActive: {
-    padding: "10px 24px",
-    backgroundColor: "#2c3e50",
-    border: "none",
-    fontWeight: "700",
-    color: "#fff",
-    borderRadius: 6,
-  },
-  section: {
-    background: "#fafafa",
-    borderRadius: 12,
-    padding: "20px 25px",
-    boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
-    minHeight: 300,
-  },
-  cardTransfer: {
-    backgroundColor: "#fff",
-    padding: 14,
-    borderRadius: 10,
-    boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
-    marginBottom: 12,
-  },
-  button: {
-    backgroundColor: "#2c3e50",
-    border: "none",
-    borderRadius: 8,
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 16,
-    padding: "12px 20px",
-    cursor: "pointer",
-  },
+  container: { fontFamily: "Arial, sans-serif", background: "#fff", minHeight: "100vh", maxWidth: 960, margin: "0 auto" },
+  header: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 28px", borderBottom: "2px solid #f0f0f0" },
+  logo: { width: 130 },
+  title: { margin: 0, fontSize: 22, color: "#333" },
+  logoutButton: { padding: "8px 18px", borderRadius: 6, border: "none", background: "#e74c3c", color: "#fff", fontWeight: "600", cursor: "pointer" },
+  tabs: { display: "flex", marginTop: 12, marginBottom: 20 },
+  tab: { flex: 1, padding: 10, background: "#eee", border: "none", cursor: "pointer", fontWeight: "600", fontSize: 15 },
+  tabActive: { flex: 1, padding: 10, background: "#4a90e2", border: "none", color: "#fff", cursor: "pointer", fontWeight: "600", fontSize: 15 },
+  section: { padding: "0 18px 30px 18px" },
+  buscaContainer: { display: "flex", alignItems: "center", gap: 10 },
+  select: { padding: 12, borderRadius: 8, border: "1px solid #ccc", fontSize: 16, minWidth: 180 },
+  button: { padding: "12px 22px", background: "#4a90e2", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 600 },
+  cardContainer: { display: "flex", flexDirection: "column", gap: 12 },
+  itensList: { display: "flex", flexWrap: "wrap", gap: 12 },
+  card: { display: "flex", padding: 12, borderRadius: 10, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", cursor: "pointer", alignItems: "center" },
+  lojaTagSmall: { marginTop: 6, fontSize: 12, color: "#666" },
+  gridTransfer: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 18 },
+  cardTransfer: { padding: 12, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" },
 };
