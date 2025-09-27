@@ -16,7 +16,6 @@ const senhaAdmin = "demo1234";
 
 const lojas = ["NovoShopping", "RibeiraoShopping", "DomPedro", "Iguatemi"];
 const lojaPadrao = "RibeiraoShopping";
-
 const logoUrl = "/logo.jpeg";
 
 export default function App() {
@@ -37,12 +36,11 @@ export default function App() {
     const usuarioEncontrado = logins.find(
       (u) => u.usuario.toLowerCase() === usuario.toLowerCase()
     );
-    const senhaValida =
-      usuarioEncontrado.usuario === "Administrador"
-        ? senha === senhaAdmin
-        : senha === senhaPadrao;
-
-    if (usuarioEncontrado && senhaValida) {
+    if (
+      usuarioEncontrado &&
+      ((usuarioEncontrado.isAdmin && senha === senhaAdmin) ||
+        (!usuarioEncontrado.isAdmin && senha === senhaPadrao))
+    ) {
       localStorage.setItem("logado", true);
       localStorage.setItem("isAdmin", usuarioEncontrado.isAdmin);
       localStorage.setItem("usuarioAtual", usuarioEncontrado.usuario);
@@ -71,19 +69,19 @@ export default function App() {
 }
 
 function Login({ onLogin }) {
-  const [usuario, setUsuario] = useState(logins[1].usuario);
+  const [usuario, setUsuario] = useState(logins[0].usuario);
   const [senha, setSenha] = useState("");
+
+  const handleLoginClick = () => {
+    onLogin(usuario, senha);
+  };
 
   return (
     <div style={styles.login}>
       <img src={logoUrl} alt="Logo" style={styles.logoLogin} />
       <h1 style={{ marginBottom: 30, color: "#222" }}>Transferência de Produtos</h1>
       <div style={styles.inputContainer}>
-        <select
-          value={usuario}
-          onChange={(e) => setUsuario(e.target.value)}
-          style={styles.input}
-        >
+        <select value={usuario} onChange={(e) => setUsuario(e.target.value)} style={styles.select}>
           {logins.map((l) => (
             <option key={l.usuario} value={l.usuario}>
               {l.usuario}
@@ -98,14 +96,12 @@ function Login({ onLogin }) {
           style={styles.input}
         />
       </div>
-      <button onClick={() => onLogin(usuario, senha)} style={styles.loginButton}>
+      <button onClick={handleLoginClick} style={styles.loginButton}>
         Entrar
       </button>
     </div>
   );
 }
-
-// =================== MainApp =================== //
 
 function MainApp({ onLogout, isAdmin }) {
   const [abaAtiva, setAbaAtiva] = useState("itens");
@@ -114,11 +110,11 @@ function MainApp({ onLogout, isAdmin }) {
     const dados = localStorage.getItem("transferenciasDemocrata");
     return dados ? JSON.parse(dados) : [];
   });
-
   const [codigoDigitado, setCodigoDigitado] = useState("");
   const [itensEncontrados, setItensEncontrados] = useState([]);
   const [itemSelecionado, setItemSelecionado] = useState(null);
   const [lojaDestino, setLojaDestino] = useState(lojaPadrao);
+  const [nomeQuemPediu, setNomeQuemPediu] = useState("");
 
   useEffect(() => {
     fetch("/itens.xls")
@@ -141,14 +137,15 @@ function MainApp({ onLogout, isAdmin }) {
         });
         setItens(lista);
       })
-      .catch(() => alert("Erro ao carregar itens.xls. Verifique o arquivo na pasta public/"));
+      .catch(() => {
+        alert("Erro ao carregar itens.xls. Verifique o arquivo na pasta public/");
+      });
   }, []);
 
   useEffect(() => {
     localStorage.setItem("transferenciasDemocrata", JSON.stringify(transferencias));
   }, [transferencias]);
 
-  // =============== BIP / DIGITAR CODIGO ================= //
   const handleInputChange = (e) => {
     const valor = e.target.value;
     setCodigoDigitado(valor);
@@ -174,7 +171,7 @@ function MainApp({ onLogout, isAdmin }) {
   };
 
   const transferirItemAuto = (item) => {
-    if (!item) return;
+    if (!item || !nomeQuemPediu.trim()) return;
     const novaTransferencia = {
       id: Date.now().toString() + "-" + Math.random(),
       itemId: item.id,
@@ -183,6 +180,7 @@ function MainApp({ onLogout, isAdmin }) {
       nomeItem: item.nome,
       referencia: item.referencia,
       lojaDestino,
+      nomeQuemPediu,
       data: new Date().toISOString(),
     };
     setTransferencias((old) => [novaTransferencia, ...old]);
@@ -218,6 +216,7 @@ function MainApp({ onLogout, isAdmin }) {
 
   const transferirItem = () => {
     if (!itemSelecionado) return alert("Selecione um item para transferir.");
+    if (!nomeQuemPediu.trim()) return alert("Digite o nome de quem pediu!");
     const novaTransferencia = {
       id: Date.now().toString() + "-" + Math.random(),
       itemId: itemSelecionado.id,
@@ -226,14 +225,16 @@ function MainApp({ onLogout, isAdmin }) {
       nomeItem: itemSelecionado.nome,
       referencia: itemSelecionado.referencia,
       lojaDestino,
+      nomeQuemPediu,
       data: new Date().toISOString(),
     };
     setTransferencias((old) => [novaTransferencia, ...old]);
-    alert("Transferência Realizada!!");
+    alert("Transferência Realizada!");
     setItemSelecionado(null);
     setCodigoDigitado("");
     setLojaDestino(lojas[1]);
     setItensEncontrados([]);
+    setNomeQuemPediu("");
   };
 
   const excluirTransferencias = () => {
@@ -253,22 +254,14 @@ function MainApp({ onLogout, isAdmin }) {
     <div style={styles.container}>
       <header style={styles.header}>
         <img src={logoUrl} alt="Logo" style={styles.logo} />
-        <h1 style={styles.title}>Painel de Transferência</h1>
+        <h1 style={styles.title}>Transferência de Produtos</h1>
         <button onClick={onLogout} style={styles.logoutButton}>Sair</button>
       </header>
 
       <nav style={styles.tabs}>
-        <button style={abaAtiva === "itens" ? styles.tabActive : styles.tab} onClick={() => setAbaAtiva("itens")}>
-          Transferência
-        </button>
-        <button style={abaAtiva === "transferidos" ? styles.tabActive : styles.tab} onClick={() => setAbaAtiva("transferidos")}>
-          Itens transferidos
-        </button>
-        {isAdmin && (
-          <button style={abaAtiva === "admin" ? styles.tabActive : styles.tab} onClick={() => setAbaAtiva("admin")}>
-            Administração
-          </button>
-        )}
+        <button style={abaAtiva === "itens" ? styles.tabActive : styles.tab} onClick={() => setAbaAtiva("itens")}>Transferência</button>
+        <button style={abaAtiva === "transferidos" ? styles.tabActive : styles.tab} onClick={() => setAbaAtiva("transferidos")}>Itens transferidos</button>
+        {isAdmin && <button style={abaAtiva === "admin" ? styles.tabActive : styles.tab} onClick={() => setAbaAtiva("admin")}>Administração</button>}
       </nav>
 
       <main style={styles.section}>
@@ -285,26 +278,57 @@ function MainApp({ onLogout, isAdmin }) {
                 autoFocus
               />
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 16, margin: "12px 0 18px 0" }}>
-              <label style={{ fontWeight: 600 }}>Loja destino:</label>
-              <select value={lojaDestino} onChange={e => setLojaDestino(e.target.value)} style={styles.select}>
-                {lojas.map((l) => (<option key={l} value={l}>{l}</option>))}
-              </select>
-              <button style={styles.button} onClick={() => { if (itemSelecionado) transferirItem(); else if (codigoDigitado.trim()) { buscarCodigo(); setTimeout(() => { if (itensEncontrados.length === 1) { setItemSelecionado(itensEncontrados[0]); setTimeout(transferirItem, 100); } else alert("Selecione o item após buscar."); }, 100); } else alert("Selecione um item ou digite o código para buscar."); }}>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 18 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                <label style={{ fontWeight: 600 }}>Destinatário:</label>
+                <select value={lojaDestino} onChange={(e) => setLojaDestino(e.target.value)} style={styles.select}>
+                  {lojas.map((l) => <option key={l} value={l}>{l}</option>)}
+                </select>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                <label style={{ fontWeight: 600 }}>Nome de quem pediu:</label>
+                <input
+                  type="text"
+                  value={nomeQuemPediu}
+                  onChange={(e) => setNomeQuemPediu(e.target.value)}
+                  placeholder="Digite o nome"
+                  style={{ ...styles.input, width: 250 }}
+                />
+              </div>
+
+              <button
+                style={styles.button}
+                onClick={() => {
+                  if (!nomeQuemPediu.trim()) return alert("Digite o nome de quem pediu!");
+                  if (itemSelecionado) transferirItem();
+                  else if (codigoDigitado.trim()) {
+                    buscarCodigo();
+                    setTimeout(() => {
+                      if (itensEncontrados.length === 1) {
+                        setItemSelecionado(itensEncontrados[0]);
+                        setTimeout(transferirItem, 100);
+                      } else alert("Selecione o item após buscar.");
+                    }, 100);
+                  } else alert("Selecione um item ou digite o código para buscar.");
+                }}
+              >
                 Transferir
               </button>
             </div>
+
             {itensEncontrados.length > 0 && (
               <div style={styles.cardContainer}>
                 <h3>Itens encontrados:</h3>
                 <div style={styles.itensList}>
                   {itensEncontrados.map((item) => (
-                    <div key={item.id} onClick={() => setItemSelecionado(item)} style={{ ...styles.card, border: item.id === itemSelecionado?.id ? "2px solid #4a90e2" : "2px solid transparent" }}>
-                      <div style={{ flex: 2 }}>
+                    <div key={item.id} onClick={() => setItemSelecionado(item)} style={{ ...styles.card, backgroundColor: item.id === itemSelecionado?.id ? "#d0e4ff" : "#fff" }}>
+                      <div>
                         <h4>{item.nome}</h4>
                         <p><strong>Referência:</strong> {item.referencia}</p>
                       </div>
-                      <div style={{ minWidth: 150, textAlign: "center" }}>
+                      <div>
                         <Barcode value={item.codigoBarra} height={40} width={1.5} />
                         <div style={styles.lojaTagSmall}>{lojaDestino}</div>
                       </div>
@@ -328,8 +352,9 @@ function MainApp({ onLogout, isAdmin }) {
                     <h4 style={{ marginTop: 0, marginBottom: 6 }}>{tr.nomeItem}</h4>
                     <p><strong>Cód. Barras:</strong> {tr.codigoBarra}</p>
                     <p><strong>Referência:</strong> {tr.referencia}</p>
-                    <p><strong>Destino:</strong> {tr.lojaDestino}</p>
-                    <p style={{ fontSize: 12, color: "#888", margin: "2px 0 8px 0" }}>Em {formatarData(tr.data)}</p>
+                    <p><strong>Destinatário:</strong> {tr.lojaDestino}</p>
+                    <p><strong>Solicitado por:</strong> {tr.nomeQuemPediu}</p>
+                    <p style={{ fontSize: 12, color: "#888" }}>Em {formatarData(tr.data)}</p>
                     <Barcode value={tr.codigoBarra} height={40} width={1.5} />
                   </div>
                 ))}
@@ -341,7 +366,10 @@ function MainApp({ onLogout, isAdmin }) {
         {abaAtiva === "admin" && isAdmin && (
           <>
             <h2 style={{ color: "#1a1a1a", marginBottom: 20 }}>Administração</h2>
-            <button onClick={excluirTransferencias} style={{ ...styles.button, background: "#c0392b", marginTop: 18 }}>
+            <button
+              onClick={excluirTransferencias}
+              style={{ ...styles.button, background: "#c0392b", marginTop: 18 }}
+            >
               Excluir todos os itens transferidos
             </button>
           </>
@@ -351,30 +379,28 @@ function MainApp({ onLogout, isAdmin }) {
   );
 }
 
-// =================== STYLES =================== //
-
 const styles = {
   login: { height: "100vh", background: "#f7f7f7", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" },
   logoLogin: { width: 220, marginBottom: 25, filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.1))" },
   inputContainer: { display: "flex", flexDirection: "column", gap: 15, marginBottom: 20 },
   input: { padding: 14, borderRadius: 12, border: "1.5px solid #ccc", fontSize: 18, fontWeight: "500", outline: "none" },
   loginButton: { padding: "16px 40px", fontSize: 22, background: "#4a90e2", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", boxShadow: "0 6px 12px rgba(74,144,226,0.4)", transition: "background-color 0.3s ease" },
+  select: { padding: 14, borderRadius: 12, border: "1.5px solid #ccc", fontSize: 16 },
   container: { fontFamily: "Arial, sans-serif", background: "#fff", minHeight: "100vh", maxWidth: 960, margin: "0 auto", padding: "10px 30px 30px 30px", boxSizing: "border-box" },
   header: { background: "#222", color: "#fff", padding: "18px 30px", display: "flex", alignItems: "center", gap: 20, borderRadius: 10, marginBottom: 30 },
-  logo: { width: 90, filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.3))" },
-  title: { fontSize: 24, fontWeight: "700", flexGrow: 1 },
-  logoutButton: { backgroundColor: "#e03e2f", color: "#fff", border: "none", borderRadius: 8, padding: "10px 22px", fontSize: 15, cursor: "pointer", boxShadow: "0 4px 10px rgba(224,62,47,0.4)", transition: "background-color 0.3s ease" },
-  tabs: { display: "flex", gap: 24, marginBottom: 30, borderBottom: "2px solid #eee" },
-  tab: { padding: "12px 32px", backgroundColor: "transparent", border: "none", borderBottom: "3px solid transparent", fontWeight: "600", fontSize: 16, color: "#666", cursor: "pointer", transition: "all 0.3s ease" },
-  tabActive: { padding: "12px 32px", backgroundColor: "transparent", border: "none", borderBottom: "3px solid #4a90e2", fontWeight: "600", fontSize: 16, color: "#222", cursor: "pointer" },
-  section: { padding: "0 4px" },
-  buscaContainer: { marginBottom: 12 },
-  select: { padding: 12, borderRadius: 10, border: "1.5px solid #ccc", fontSize: 16 },
-  button: { padding: "12px 26px", background: "#4a90e2", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 600 },
-  cardContainer: { marginTop: 14 },
-  itensList: { display: "flex", flexDirection: "column", gap: 12 },
-  card: { display: "flex", alignItems: "center", justifyContent: "space-between", background: "#f4f4f4", borderRadius: 10, padding: 12, cursor: "pointer", transition: "all 0.2s ease" },
-  lojaTagSmall: { background: "#4a90e2", color: "#fff", borderRadius: 6, fontSize: 13, padding: "2px 6px", marginTop: 6, display: "inline-block" },
-  gridTransfer: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 18 },
-  cardTransfer: { border: "1px solid #ddd", borderRadius: 12, padding: 14, background: "#fafafa", display: "flex", flexDirection: "column", alignItems: "center" },
+  logo: { width: 90, filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.2))" },
+  title: { margin: 0, fontSize: 22, flex: 1 },
+  logoutButton: { padding: "8px 18px", borderRadius: 8, background: "#e74c3c", color: "#fff", border: "none", cursor: "pointer" },
+  tabs: { display: "flex", gap: 12, marginBottom: 20 },
+  tab: { padding: "10px 18px", borderRadius: 8, background: "#eee", border: "none", cursor: "pointer" },
+  tabActive: { padding: "10px 18px", borderRadius: 8, background: "#3498db", color: "#fff", border: "none", cursor: "pointer" },
+  section: { marginTop: 10 },
+  buscaContainer: { display: "flex", alignItems: "center", gap: 12, marginBottom: 20 },
+  button: { padding: "14px 28px", background: "#2ecc71", color: "#fff", border: "none", borderRadius: 12, fontSize: 16, cursor: "pointer" },
+  cardContainer: { marginTop: 12 },
+  itensList: { display: "flex", flexWrap: "wrap", gap: 14 },
+  card: { border: "1px solid #ccc", padding: 12, borderRadius: 12, width: 220, cursor: "pointer", display: "flex", flexDirection: "column", gap: 8, background: "#fff", boxShadow: "0 2px 6px rgba(0,0,0,0.05)" },
+  lojaTagSmall: { fontSize: 11, marginTop: 6, fontWeight: 600, textAlign: "center" },
+  gridTransfer: { display: "flex", flexWrap: "wrap", gap: 14 },
+  cardTransfer: { border: "1px solid #ccc", borderRadius: 12, padding: 12, width: 210, background: "#fff", display: "flex", flexDirection: "column", gap: 6, boxShadow: "0 2px 6px rgba(0,0,0,0.05)" },
 };
