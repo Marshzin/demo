@@ -35,6 +35,7 @@ function App() {
     const usuarioEncontrado = logins.find(
       (u) => u.usuario.toLowerCase() === usuario.toLowerCase()
     );
+
     if (
       usuarioEncontrado &&
       ((usuarioEncontrado.isAdmin && senha === senhaAdmin) ||
@@ -115,7 +116,7 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
   const [destinatario, setDestinatario] = useState(
     lojas.find((l) => l !== usuarioAtual) || lojas[0]
   );
-  const [vendedor, setVendedor] = useState(""); // Novo campo
+  const [vendedor, setVendedor] = useState(""); // Novo estado para vendedor
   const [showNotification, setShowNotification] = useState(false);
 
   const scannerBuffer = useRef("");
@@ -132,6 +133,7 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
         const workbook = XLSX.read(data, { type: "array" });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+
         const lista = rows.map((linha, i) => {
           const codigoProduto = String(linha["Código Produto"] ?? "").trim();
           const cbRaw = String(linha["Códigos de Barras"] ?? "");
@@ -140,13 +142,16 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
             .map((c) => c.trim())
             .filter((c) => c.length > 0)
             .map((c) => c.replace(/[^\dA-Za-z]/g, "").trim());
+
           let codigoBarra = codigoProduto;
           if (codigosBarras.length > 0) {
             codigosBarras.sort((a, b) => b.length - a.length);
             codigoBarra = codigosBarras[0];
           }
+
           const descricao = String(linha["Descrição Completa"] ?? "Sem descrição").trim();
           const referencia = String(linha["Referência"] ?? "-").trim();
+
           return {
             id: `${codigoProduto}-${i}`,
             codigo: codigoProduto,
@@ -156,52 +161,16 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
             referencia,
           };
         });
+
         setItens(lista);
       })
       .catch((err) => {
         console.error("Erro lendo itens.xls", err);
-        alert(
-          "Erro ao carregar itens.xls. Verifique o arquivo na pasta public/ e os nomes das colunas."
-        );
+        alert("Erro ao carregar itens.xls. Verifique o arquivo na pasta public/ e os nomes das colunas.");
       });
   }, []);
 
-  useEffect(() => {
-    const onKeyDown = (e) => {
-      const active = document.activeElement;
-      const activeTag = active && active.tagName && active.tagName.toLowerCase();
-      const activeIsInput =
-        activeTag === "input" || activeTag === "textarea" || active.isContentEditable;
-
-      if (e.key === "Enter") {
-        const code = scannerBuffer.current.trim();
-        if (code.length > 0) {
-          processarCodigo(code);
-        } else {
-          const manual = (document.getElementById("manualCodigoInput") || {}).value;
-          if (manual && manual.trim().length > 0) processarCodigo(manual.trim());
-        }
-        scannerBuffer.current = "";
-        if (scannerTimeout.current) {
-          clearTimeout(scannerTimeout.current);
-          scannerTimeout.current = null;
-        }
-      } else if (e.key.length === 1) {
-        scannerBuffer.current += e.key;
-        if (scannerTimeout.current) clearTimeout(scannerTimeout.current);
-        scannerTimeout.current = setTimeout(() => {
-          scannerBuffer.current = "";
-          scannerTimeout.current = null;
-        }, 80);
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [itens, destinatario, usuarioAtual, pedidos]);
-
-  const handleManualChange = (e) => {
-    setCodigoDigitado(e.target.value);
-  };
+  const handleManualChange = (e) => setCodigoDigitado(e.target.value);
 
   const handleManualKeyDown = (e) => {
     if (e.key === "Enter") {
@@ -235,13 +204,16 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
         if (!it.codigosBarras) return false;
         return it.codigosBarras.some((cb) => cb.toLowerCase().endsWith(valor));
       });
+
       if (foundByEnds) {
         registrarPedido(foundByEnds);
         return;
       }
+
       alert(`Nenhum item encontrado para: ${valorOriginal}`);
       return;
     }
+
     registrarPedido(encontrado);
   };
 
@@ -258,7 +230,7 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
       referencia: item.referencia,
       destinatario,
       origem: usuarioAtual,
-      vendedor,
+      vendedor, // Adiciona o vendedor
       data: new Date().toISOString(),
     };
 
