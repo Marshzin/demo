@@ -13,7 +13,7 @@ const logins = [
 const senhaPadrao = "1234";
 const senhaAdmin = "demo1234";
 const lojas = ["NovoShopping", "RibeiraoShopping", "DomPedro", "Iguatemi"];
-const logoUrl = "/logo.jpeg"; 
+const logoUrl = "/logo.jpeg";
 const LS_KEY = "pedidosERP";
 
 export default function App() {
@@ -121,10 +121,9 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
   const [destinatario, setDestinatario] = useState(
     lojas.find((l) => l !== usuarioAtual) || lojas[0]
   );
-  const [lojaSelecionada] = useState(lojas[0]);
   const [vendedor, setVendedor] = useState("");
 
-  // estado para notificações
+  // popup de sucesso/erro
   const [notification, setNotification] = useState(null);
 
   const scannerBuffer = useRef("");
@@ -171,11 +170,10 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
       })
       .catch((err) => {
         console.error("Erro lendo itens.xls", err);
-        showNotification("Erro ao carregar itens.xls.", "error");
+        showNotification("Erro ao carregar itens.xls", "error");
       });
   }, []);
 
-  // função de notificação
   const showNotification = (msg, type = "success") => {
     setNotification({ msg, type });
     setTimeout(() => setNotification(null), 3000);
@@ -218,8 +216,10 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
 
   const registrarPedido = (item) => {
     if (!item) return;
-    if (!destinatario)
-      return showNotification("Selecione o destinatário.", "error");
+    if (!destinatario) {
+      showNotification("Selecione o destinatário.", "error");
+      return;
+    }
 
     const novo = {
       id: Date.now().toString() + "-" + Math.random(),
@@ -262,7 +262,7 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
         </div>
       </header>
 
-      {/* Popup de Notificação */}
+      {/* Notificação (popup animado) */}
       {notification && (
         <div
           style={{
