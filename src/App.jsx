@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import * as XLSX from "xlsx";
-import Barcode from "react-barcode";
-import "./styles.css";
-
+import "./styles.css"; // CSS com animações
 const logins = [
   { usuario: "NovoShopping", loja: "NovoShopping", isAdmin: false },
   { usuario: "RibeiraoShopping", loja: "RibeiraoShopping", isAdmin: false },
@@ -10,11 +8,10 @@ const logins = [
   { usuario: "Iguatemi", loja: "Iguatemi", isAdmin: false },
   { usuario: "Administrador", loja: "Administrador", isAdmin: true },
 ];
-
 const senhaPadrao = "1234";
 const senhaAdmin = "demo1234";
 const lojas = ["NovoShopping", "RibeiraoShopping", "DomPedro", "Iguatemi"];
-const logoUrl = "/logo.jpeg"; // ajuste se necessário
+const logoUrl = "/logo.jpeg";
 const LS_KEY = "pedidosERP";
 
 export default function App() {
@@ -107,15 +104,11 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
   });
 
   const [codigoDigitado, setCodigoDigitado] = useState("");
-  const [itensEncontrados, setItensEncontrados] = useState([]);
-  const [itemSelecionado, setItemSelecionado] = useState(null);
-  const [destinatario, setDestinatario] = useState(
-    lojas.find((l) => l !== usuarioAtual) || lojas[0]
-  );
-  const [lojaSelecionada, setLojaSelecionada] = useState(lojas[0]);
-  const [vendedor, setVendedor] = useState(""); // Novo estado para vendedor
+  const [destinatario, setDestinatario] = useState(lojas.find((l) => l !== usuarioAtual));
+  const [vendedor, setVendedor] = useState("");
 
   const [showNotification, setShowNotification] = useState(false);
+  const [erroMensagem, setErroMensagem] = useState("");
 
   const scannerBuffer = useRef("");
   const scannerTimeout = useRef(null);
@@ -159,16 +152,13 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
       })
       .catch((err) => {
         console.error("Erro lendo itens.xls", err);
-        alert("Erro ao carregar itens.xls. Verifique o arquivo na pasta public/ e os nomes das colunas.");
+        setErroMensagem("Erro ao carregar itens.xls. Verifique o arquivo na pasta public/.");
+        setTimeout(() => setErroMensagem(""), 4000);
       });
   }, []);
 
   useEffect(() => {
     const onKeyDown = (e) => {
-      const active = document.activeElement;
-      const activeTag = active && active.tagName && active.tagName.toLowerCase();
-      const activeIsInput = activeTag === "input" || activeTag === "textarea" || active.isContentEditable;
-
       if (e.key === "Enter") {
         const code = scannerBuffer.current.trim();
         if (code.length > 0) {
@@ -195,10 +185,7 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [itens, destinatario, usuarioAtual, pedidos]);
 
-  const handleManualChange = (e) => {
-    setCodigoDigitado(e.target.value);
-  };
-
+  const handleManualChange = (e) => setCodigoDigitado(e.target.value);
   const handleManualKeyDown = (e) => {
     if (e.key === "Enter") {
       const v = (e.target.value || "").trim();
@@ -213,27 +200,23 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
     const valor = String(valorOriginal || "").replace(/[^\w\d]/g, "").trim().toLowerCase();
     if (!valor) return;
     const encontrado = itens.find((it) => {
-      if (!it) return false;
-      if (String(it.codigo || "").toLowerCase() === valor) return true;
-      if (String(it.referencia || "").toLowerCase() === valor) return true;
-      if (String(it.codigoBarra || "").toLowerCase() === valor) return true;
-      if (Array.isArray(it.codigosBarras)) {
-        for (const cb of it.codigosBarras) {
-          if (String(cb || "").toLowerCase() === valor) return true;
-        }
-      }
-      return false;
+      return (
+        it.codigo.toLowerCase() === valor ||
+        it.referencia.toLowerCase() === valor ||
+        it.codigoBarra.toLowerCase() === valor ||
+        it.codigosBarras?.some((cb) => cb.toLowerCase() === valor)
+      );
     });
     if (!encontrado) {
-      const foundByEnds = itens.find((it) => {
-        if (!it.codigosBarras) return false;
-        return it.codigosBarras.some((cb) => cb.toLowerCase().endsWith(valor));
-      });
+      const foundByEnds = itens.find((it) =>
+        it.codigosBarras?.some((cb) => cb.toLowerCase().endsWith(valor))
+      );
       if (foundByEnds) {
         registrarPedido(foundByEnds);
         return;
       }
-      alert(`Nenhum item encontrado para: ${valorOriginal}`);
+      setErroMensagem(`Nenhum item encontrado para: ${valorOriginal}`);
+      setTimeout(() => setErroMensagem(""), 3000);
       return;
     }
     registrarPedido(encontrado);
@@ -241,7 +224,11 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
 
   const registrarPedido = (item) => {
     if (!item) return;
-    if (!destinatario) return alert("Selecione o destinatário (a loja que fez o pedido).");
+    if (!destinatario) {
+      setErroMensagem("Selecione o destinatário.");
+      setTimeout(() => setErroMensagem(""), 3000);
+      return;
+    }
 
     const novo = {
       id: Date.now().toString() + "-" + Math.random(),
@@ -252,7 +239,7 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
       referencia: item.referencia,
       destinatario,
       origem: usuarioAtual,
-      vendedor, // Adiciona o vendedor
+      vendedor,
       data: new Date().toISOString(),
     };
 
@@ -272,100 +259,64 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
         </div>
       </header>
 
-      {/* Notificação de Sucesso */}
+      {/* Notificações */}
       {showNotification && (
-        <div style={styles.notificacao}>
-          <p style={styles.notificacaoTexto}>Produto registrado com sucesso!</p>
+        <div className="popup-notification popup-success">
+          Produto registrado com sucesso!
+        </div>
+      )}
+      {erroMensagem && (
+        <div className="popup-notification popup-error">
+          {erroMensagem}
         </div>
       )}
 
-      <nav style={styles.tabs}>
-        <button
-          style={abaAtiva === "transferencia" ? styles.tabActive : styles.tab}
-          onClick={() => setAbaAtiva("transferencia")}
-        >
-          Transferência
-        </button>
-        <button
-          style={abaAtiva === "pedidos" ? styles.tabActive : styles.tab}
-          onClick={() => setAbaAtiva("pedidos")}
-        >
-          Itens Pedidos
-        </button>
-        {isAdmin && (
-          <button
-            style={abaAtiva === "admin" ? styles.tabActive : styles.tab}
-            onClick={() => setAbaAtiva("admin")}
-          >
-            Administração
-          </button>
-        )}
-      </nav>
-
       <main style={styles.section}>
-        {abaAtiva === "transferencia" && (
-          <>
-            <h2 style={{ marginBottom: 12 }}>Bipar e Registrar Pedido</h2>
-            <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 14 }}>
-              <label style={{ fontWeight: 600 }}>Destinatário:</label>
-              <select
-                value={destinatario}
-                onChange={(e) => setDestinatario(e.target.value)}
-                style={styles.select}
-              >
-                <option value="">-- selecione --</option>
-                {lojas
-                  .filter((l) => l !== usuarioAtual)
-                  .map((l) => (
-                    <option key={l} value={l}>
-                      {l}
-                    </option>
-                  ))}
-              </select>
-            </div>
+        <h2 style={{ marginBottom: 12 }}>Bipar e Registrar Pedido</h2>
 
-            {/* Campo de Vendedor */}
-            <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 14 }}>
-              <label style={{ fontWeight: 600 }}>Vendedor:</label>
-              <input
-                type="text"
-                value={vendedor}
-                onChange={(e) => setVendedor(e.target.value)}
-                style={styles.input}
-                placeholder="Digite o nome do vendedor"
-              />
-            </div>
+        <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 14 }}>
+          <label style={{ fontWeight: 600 }}>Destinatário:</label>
+          <select
+            value={destinatario}
+            onChange={(e) => setDestinatario(e.target.value)}
+            style={styles.select}
+          >
+            <option value="">-- selecione --</option>
+            {lojas.filter((l) => l !== usuarioAtual).map((l) => (
+              <option key={l} value={l}>
+                {l}
+              </option>
+            ))}
+          </select>
+        </div>
 
-            {/* Scanner Manual */}
-            <div style={{ marginBottom: 18 }}>
-              <input
-                id="manualCodigoInput"
-                type="text"
-                placeholder="Ou digite/cole o código e pressione Enter"
-                value={codigoDigitado}
-                onChange={handleManualChange}
-                onKeyDown={handleManualKeyDown}
-                style={{ ...styles.input, width: 420 }}
-              />
-            </div>
-          </>
-        )}
+        <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 14 }}>
+          <label style={{ fontWeight: 600 }}>Vendedor:</label>
+          <input
+            type="text"
+            value={vendedor}
+            onChange={(e) => setVendedor(e.target.value)}
+            style={styles.input}
+            placeholder="Digite o nome do vendedor"
+          />
+        </div>
 
-        {/* Outros componentes... */}
+        <input
+          id="manualCodigoInput"
+          type="text"
+          placeholder="Ou digite/cole o código e pressione Enter"
+          value={codigoDigitado}
+          onChange={handleManualChange}
+          onKeyDown={handleManualKeyDown}
+          style={{ ...styles.input, width: 420 }}
+        />
       </main>
     </div>
   );
 }
 
-// Estilos
 const styles = {
-  container: {
-    fontFamily: "'Roboto', sans-serif",
-    display: "flex",
-    flexDirection: "column",
-    minHeight: "100vh",
-    backgroundColor: "#f7f7f7",
-  },
+  container: { fontFamily: "'Roboto', sans-serif", minHeight: "100vh" },
   header: {
     backgroundColor: "#2d3e50",
     padding: "16px 32px",
@@ -373,14 +324,8 @@ const styles = {
     justifyContent: "space-between",
     alignItems: "center",
   },
-  logo: {
-    width: 150,
-    height: 40,
-  },
-  title: {
-    color: "#fff",
-    fontSize: 24,
-  },
+  logo: { width: 150, height: 40 },
+  title: { color: "#fff", fontSize: 24 },
   logoutButton: {
     backgroundColor: "#e53935",
     color: "#fff",
@@ -389,51 +334,7 @@ const styles = {
     cursor: "pointer",
     borderRadius: 4,
   },
-  notificacao: {
-    position: "fixed",
-    bottom: 20,
-    left: "50%",
-    transform: "translateX(-50%)",
-    backgroundColor: "#4CAF50",
-    color: "#fff",
-    padding: "10px 20px",
-    borderRadius: 8,
-    opacity: 0,
-    animation: "notificacaoAnimacao 3s forwards",
-  },
-  notificacaoTexto: {
-    fontSize: 16,
-    fontWeight: 600,
-  },
-  "@keyframes notificacaoAnimacao": {
-    "0%": { opacity: 0 },
-    "50%": { opacity: 1 },
-    "100%": { opacity: 0 },
-  },
-  tabs: {
-    display: "flex",
-    marginBottom: 16,
-    gap: 12,
-  },
-  tab: {
-    padding: "12px 20px",
-    backgroundColor: "#f1f1f1",
-    border: "none",
-    cursor: "pointer",
-    borderRadius: 4,
-    fontWeight: 600,
-  },
-  tabActive: {
-    padding: "12px 20px",
-    backgroundColor: "#2d3e50",
-    color: "#fff",
-    border: "none",
-    borderRadius: 4,
-    fontWeight: 600,
-  },
-  section: {
-    padding: "20px",
-  },
+  section: { padding: 20 },
   input: {
     padding: "8px 16px",
     borderRadius: 4,
@@ -448,10 +349,13 @@ const styles = {
     fontSize: 16,
     width: 300,
   },
-  inputContainer: {
+  login: {
     display: "flex",
     flexDirection: "column",
-    gap: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: "100vh",
+    backgroundColor: "#f7f7f7",
   },
   loginButton: {
     backgroundColor: "#2196F3",
@@ -468,6 +372,9 @@ const styles = {
     height: 40,
     marginBottom: 16,
   },
+  inputContainer: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+  },
 };
-
-export default App;
