@@ -98,10 +98,9 @@ export default function App() {
           const cbRaw = String(row["Códigos de Barras"] ?? "");
           const codigosBarras = cbRaw
             .split("|")
-            .map((c) => c.trim())
-            .filter((c) => c.length > 0)
-            .map((c) => c.replace(/[^\dA-Za-z]/g, "").trim());
-          const codigoBarra = codigosBarras.length > 0 ? [...codigosBarras].sort((a, b) => b.length - a.length)[0] : codigoProduto;
+            .map((c) => c.replace(/[^0-9A-Za-z]/g, "").trim())
+            .filter((c) => c.length > 0);
+          const codigoBarra = codigosBarras.length > 0 ? [...codigosBarras][0] : codigoProduto;
           const descricao = String(row["Descrição Completa"] ?? "Sem descrição").trim();
           const referencia = String(row["Referência"] ?? "").trim();
           return {
@@ -189,18 +188,14 @@ export default function App() {
 
     let encontrado = catalogo.find((it) => {
       if (!it) return false;
-      if ((it.codigoProduto || "").toLowerCase() === valor) return true;
-      if ((it.codigoBarra || "").toLowerCase() === valor) return true;
-      if ((it.referencia || "").toLowerCase() === valor) return true;
+      if ((it.codigoProduto || "").replace(/[^\w\d]/g, "").trim().toLowerCase() === valor) return true;
+      if ((it.codigoBarra || "").replace(/[^\w\d]/g, "").trim().toLowerCase() === valor) return true;
+      if ((it.referencia || "").replace(/[^\w\d]/g, "").trim().toLowerCase() === valor) return true;
       if (Array.isArray(it.codigosBarras)) {
-        if (it.codigosBarras.some((cb) => (cb || "").toLowerCase() === valor)) return true;
+        if (it.codigosBarras.some((cb) => cb.replace(/[^\w\d]/g, "").trim().toLowerCase() === valor)) return true;
       }
       return false;
     });
-
-    if (!encontrado) {
-      encontrado = catalogo.find((it) => it.codigosBarras && it.codigosBarras.some((cb) => cb.toLowerCase().endsWith(valor)));
-    }
 
     if (!encontrado) {
       setCodigoNaoEncontrado(valorOriginal);
@@ -319,7 +314,6 @@ export default function App() {
     localStorage.removeItem("erp_isAdmin");
   };
 
-  // admin: delete individual pedido
   const adminExcluir = (id) => {
     if (!window.confirm("Excluir este pedido?")) return;
     setPedidos((old) => old.filter((p) => p.id !== id));
