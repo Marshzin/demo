@@ -1,3 +1,4 @@
+// App.jsx
 import React, { useState, useEffect, useRef } from "react";
 import * as XLSX from "xlsx";
 import Barcode from "react-barcode";
@@ -14,7 +15,7 @@ const logins = [
 const senhaPadrao = "1234";
 const senhaAdmin = "demo1234";
 const lojas = ["NovoShopping", "RibeiraoShopping", "DomPedro", "Iguatemi"];
-const logoUrl = "/logo.jpeg"; // ajuste se necessário
+const logoUrl = "/logo.jpeg";
 const LS_KEY = "pedidosERP";
 
 function App() {
@@ -78,15 +79,15 @@ function Login({ onLogin }) {
   const handleLoginClick = () => onLogin(usuario, senha);
 
   return (
-    <div style={styles.login}>
-      <img src={logoUrl} alt="Logo" style={styles.logoLogin} />
-      <h1 style={{ marginBottom: 20 }}>Transferência de Produtos</h1>
+    <div style={ui.loginPage}>
+      <div style={ui.loginCard}>
+        <img src={logoUrl} alt="Logo" style={ui.logoLogin} />
+        <h1 style={ui.loginTitle}>Transferência de Produtos</h1>
 
-      <div style={styles.inputContainer}>
         <select
           value={usuario}
           onChange={(e) => setUsuario(e.target.value)}
-          style={styles.input}
+          style={ui.input}
         >
           {logins.map((l) => (
             <option key={l.usuario} value={l.usuario}>
@@ -100,230 +101,56 @@ function Login({ onLogin }) {
           placeholder="Senha"
           value={senha}
           onChange={(e) => setSenha(e.target.value)}
-          style={styles.input}
+          style={ui.input}
         />
-      </div>
 
-      <button onClick={handleLoginClick} style={styles.loginButton}>
-        Entrar
-      </button>
+        <button onClick={handleLoginClick} style={ui.primaryButton}>
+          Entrar
+        </button>
+      </div>
     </div>
   );
 }
 
 function MainApp({ onLogout, isAdmin, usuarioAtual }) {
   const [abaAtiva, setAbaAtiva] = useState("transferencia");
-  const [itens, setItens] = useState([]);
-  const [pedidos, setPedidos] = useState(() => {
-    const raw = localStorage.getItem(LS_KEY);
-    return raw ? JSON.parse(raw) : [];
-  });
-
-  const [codigoDigitado, setCodigoDigitado] = useState("");
-  const [itensEncontrados, setItensEncontrados] = useState([]);
-  const [itemSelecionado, setItemSelecionado] = useState(null);
-  const [destinatario, setDestinatario] =
-    useState(lojas.find((l) => l !== usuarioAtual) || lojas[0]);
-  const [lojaSelecionada, setLojaSelecionada] = useState(lojas[0]);
   const [vendedor, setVendedor] = useState("");
+  const [codigoDigitado, setCodigoDigitado] = useState("");
   const [showNotification, setShowNotification] = useState(false);
 
-  const scannerBuffer = useRef("");
-  const scannerTimeout = useRef(null);
-
-  useEffect(() => {
-    localStorage.setItem(LS_KEY, JSON.stringify(pedidos));
-  }, [pedidos]);
-
-  useEffect(() => {
-    fetch("/itens.xls")
-      .then((res) => res.arrayBuffer())
-      .then((data) => {
-        const workbook = XLSX.read(data, { type: "array" });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
-
-        const lista = rows.map((linha, i) => {
-          const codigoProduto = String(linha["Código Produto"] ?? "").trim();
-          const cbRaw = String(linha["Códigos de Barras"] ?? "");
-          const codigosBarras = cbRaw
-            .split("|")
-            .map((c) => c.trim())
-            .filter((c) => c.length > 0)
-            .map((c) => c.replace(/[^\dA-Za-z]/g, "").trim());
-
-          let codigoBarra = codigoProduto;
-          if (codigosBarras.length > 0) {
-            codigosBarras.sort((a, b) => b.length - a.length);
-            codigoBarra = codigosBarras[0];
-          }
-
-          const descricao = String(linha["Descrição Completa"] ?? "Sem descrição").trim();
-          const referencia = String(linha["Referência"] ?? "-").trim();
-
-          return {
-            id: `${codigoProduto}-${i}`,
-            codigo: codigoProduto,
-            codigosBarras,
-            codigoBarra,
-            nome: descricao,
-            referencia,
-          };
-        });
-
-        setItens(lista);
-      })
-      .catch((err) => {
-        console.error("Erro lendo itens.xls", err);
-        alert(
-          "Erro ao carregar itens.xls. Verifique o arquivo na pasta public/ e os nomes das colunas."
-        );
-      });
-  }, []);
-
-  useEffect(() => {
-    const onKeyDown = (e) => {
-      const active = document.activeElement;
-      const activeTag = active && active.tagName && active.tagName.toLowerCase();
-      const activeIsInput =
-        activeTag === "input" || activeTag === "textarea" || active.isContentEditable;
-
-      if (e.key === "Enter") {
-        const code = scannerBuffer.current.trim();
-        if (code.length > 0) {
-          processarCodigo(code);
-        } else {
-          const manual = (document.getElementById("manualCodigoInput") || {}).value;
-          if (manual && manual.trim().length > 0) processarCodigo(manual.trim());
-        }
-        scannerBuffer.current = "";
-        if (scannerTimeout.current) {
-          clearTimeout(scannerTimeout.current);
-          scannerTimeout.current = null;
-        }
-      } else if (e.key.length === 1) {
-        scannerBuffer.current += e.key;
-        if (scannerTimeout.current) clearTimeout(scannerTimeout.current);
-        scannerTimeout.current = setTimeout(() => {
-          scannerBuffer.current = "";
-          scannerTimeout.current = null;
-        }, 80);
-      }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [itens, destinatario, usuarioAtual, pedidos]);
-
-  const handleManualChange = (e) => setCodigoDigitado(e.target.value);
-
-  const handleManualKeyDown = (e) => {
-    if (e.key === "Enter") {
-      const v = (e.target.value || "").trim();
-      if (v.length > 0) {
-        processarCodigo(v);
-        setCodigoDigitado("");
-      }
-    }
-  };
-
-  const processarCodigo = (valorOriginal) => {
-    const valor = String(valorOriginal || "")
-      .replace(/[^\w\d]/g, "")
-      .trim()
-      .toLowerCase();
-
-    if (!valor) return;
-
-    const encontrado = itens.find((it) => {
-      if (!it) return false;
-      if (String(it.codigo || "").toLowerCase() === valor) return true;
-      if (String(it.referencia || "").toLowerCase() === valor) return true;
-      if (String(it.codigoBarra || "").toLowerCase() === valor) return true;
-
-      if (Array.isArray(it.codigosBarras)) {
-        for (const cb of it.codigosBarras) {
-          if (String(cb || "").toLowerCase() === valor) return true;
-        }
-      }
-      return false;
-    });
-
-    if (!encontrado) {
-      const foundByEnds = itens.find((it) => {
-        if (!it.codigosBarras) return false;
-        return it.codigosBarras.some((cb) => cb.toLowerCase().endsWith(valor));
-      });
-
-      if (foundByEnds) {
-        registrarPedido(foundByEnds);
-        return;
-      }
-      alert(`Nenhum item encontrado para: ${valorOriginal}`);
-      return;
-    }
-
-    registrarPedido(encontrado);
-  };
-
-  const registrarPedido = (item) => {
-    if (!item) return;
-    if (!destinatario) return alert("Selecione o destinatário (a loja que fez o pedido).");
-
-    const novo = {
-      id: Date.now().toString() + "-" + Math.random(),
-      itemId: item.id,
-      codigo: item.codigo,
-      codigoBarra: item.codigoBarra,
-      nomeItem: item.nome,
-      referencia: item.referencia,
-      destinatario,
-      origem: usuarioAtual,
-      vendedor,
-      data: new Date().toISOString(),
-    };
-
-    setPedidos((old) => [novo, ...old]);
-    setShowNotification(true);
-    setTimeout(() => setShowNotification(false), 3000);
-  };
-
   return (
-    <div style={styles.container}>
-      <header style={styles.header}>
-        <img src={logoUrl} alt="Logo" style={styles.logo} />
-        <h1 style={styles.title}>Painel de Transferência</h1>
+    <div style={ui.appContainer}>
+      <header style={ui.header}>
+        <img src={logoUrl} alt="Logo" style={ui.logo} />
+        <h1 style={ui.title}>Painel de Transferência</h1>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <div style={{ color: "#fff", fontWeight: 600 }}>{usuarioAtual}</div>
-          <button onClick={onLogout} style={styles.logoutButton}>
+          <span style={ui.user}>{usuarioAtual}</span>
+          <button onClick={onLogout} style={ui.logoutButton}>
             Sair
           </button>
         </div>
       </header>
 
-      {/* Notificação de Sucesso */}
       {showNotification && (
-        <div style={styles.notificacao}>
-          <p style={styles.notificacaoTexto}>Produto registrado com sucesso!</p>
-        </div>
+        <div style={ui.notification}>Produto registrado com sucesso!</div>
       )}
 
-      <nav style={styles.tabs}>
+      <nav style={ui.tabs}>
         <button
-          style={abaAtiva === "transferencia" ? styles.tabActive : styles.tab}
+          style={abaAtiva === "transferencia" ? ui.tabActive : ui.tab}
           onClick={() => setAbaAtiva("transferencia")}
         >
           Transferência
         </button>
         <button
-          style={abaAtiva === "pedidos" ? styles.tabActive : styles.tab}
+          style={abaAtiva === "pedidos" ? ui.tabActive : ui.tab}
           onClick={() => setAbaAtiva("pedidos")}
         >
           Itens Pedidos
         </button>
         {isAdmin && (
           <button
-            style={abaAtiva === "admin" ? styles.tabActive : styles.tab}
+            style={abaAtiva === "admin" ? ui.tabActive : ui.tab}
             onClick={() => setAbaAtiva("admin")}
           >
             Administração
@@ -331,143 +158,162 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
         )}
       </nav>
 
-      <main style={styles.section}>
+      <main style={ui.main}>
         {abaAtiva === "transferencia" && (
-          <>
-            <h2 style={{ marginBottom: 12 }}>Bipar e Registrar Pedido</h2>
+          <div style={ui.card}>
+            <h2 style={ui.cardTitle}>Registrar Pedido</h2>
 
-            <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 14 }}>
-              <label style={{ fontWeight: 600 }}>Destinatário:</label>
-              <select
-                value={destinatario}
-                onChange={(e) => setDestinatario(e.target.value)}
-                style={styles.select}
-              >
-                <option value="">-- selecione --</option>
-                {lojas
-                  .filter((l) => l !== usuarioAtual)
-                  .map((l) => (
-                    <option key={l} value={l}>
-                      {l}
-                    </option>
-                  ))}
-              </select>
-            </div>
+            <label style={ui.label}>Vendedor</label>
+            <input
+              type="text"
+              value={vendedor}
+              onChange={(e) => setVendedor(e.target.value)}
+              style={ui.input}
+              placeholder="Digite o nome do vendedor"
+            />
 
-            {/* Campo de Vendedor */}
-            <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 14 }}>
-              <label style={{ fontWeight: 600 }}>Vendedor:</label>
-              <input
-                type="text"
-                value={vendedor}
-                onChange={(e) => setVendedor(e.target.value)}
-                style={styles.input}
-                placeholder="Digite o nome do vendedor"
-              />
-            </div>
+            <label style={ui.label}>Código do Produto</label>
+            <input
+              id="manualCodigoInput"
+              type="text"
+              placeholder="Digite ou bip e pressione Enter"
+              value={codigoDigitado}
+              onChange={(e) => setCodigoDigitado(e.target.value)}
+              style={ui.input}
+            />
 
-            {/* Scanner Manual */}
-            <div style={{ marginBottom: 18 }}>
-              <input
-                id="manualCodigoInput"
-                type="text"
-                placeholder="Ou digite/cole o código e pressione Enter"
-                value={codigoDigitado}
-                onChange={handleManualChange}
-                onKeyDown={handleManualKeyDown}
-                style={{ ...styles.input, width: 420 }}
-              />
-            </div>
-          </>
+            <button style={ui.primaryButton}>Registrar</button>
+          </div>
         )}
       </main>
     </div>
   );
 }
 
-// Estilos
-const styles = {
-  container: {
-    fontFamily: "'Roboto', sans-serif",
+// Novo estilo clean
+const ui = {
+  appContainer: {
+    fontFamily: "'Segoe UI', sans-serif",
+    backgroundColor: "#f4f6f9",
+    minHeight: "100vh",
     display: "flex",
     flexDirection: "column",
-    minHeight: "100vh",
-    backgroundColor: "#f7f7f7",
   },
   header: {
-    backgroundColor: "#2d3e50",
+    backgroundColor: "#1f2937",
     padding: "16px 32px",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
+    color: "#fff",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
   },
-  logo: { width: 150, height: 40 },
-  title: { color: "#fff", fontSize: 24 },
+  logo: { width: 140, height: 40, objectFit: "contain" },
+  title: { fontSize: 22, fontWeight: 600 },
+  user: { fontWeight: 500 },
   logoutButton: {
-    backgroundColor: "#e53935",
+    backgroundColor: "#ef4444",
     color: "#fff",
     padding: "8px 16px",
     border: "none",
+    borderRadius: 6,
     cursor: "pointer",
-    borderRadius: 4,
   },
-  notificacao: {
-    position: "fixed",
-    bottom: 20,
-    left: "50%",
-    transform: "translateX(-50%)",
-    backgroundColor: "#4CAF50",
-    color: "#fff",
-    padding: "10px 20px",
-    borderRadius: 8,
-    opacity: 0,
-    animation: "notificacaoAnimacao 3s forwards",
+  tabs: {
+    display: "flex",
+    backgroundColor: "#fff",
+    padding: "8px 16px",
+    borderBottom: "1px solid #ddd",
+    gap: 12,
   },
-  notificacaoTexto: { fontSize: 16, fontWeight: 600 },
-  tabs: { display: "flex", marginBottom: 16, gap: 12 },
   tab: {
-    padding: "12px 20px",
-    backgroundColor: "#f1f1f1",
+    padding: "10px 18px",
+    backgroundColor: "#f3f4f6",
     border: "none",
+    borderRadius: 6,
     cursor: "pointer",
-    borderRadius: 4,
-    fontWeight: 600,
+    fontWeight: 500,
   },
   tabActive: {
-    padding: "12px 20px",
-    backgroundColor: "#2d3e50",
+    padding: "10px 18px",
+    backgroundColor: "#2563eb",
     color: "#fff",
     border: "none",
-    borderRadius: 4,
+    borderRadius: 6,
     fontWeight: 600,
   },
-  section: { padding: "20px" },
+  main: {
+    flex: 1,
+    padding: 24,
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "flex-start",
+  },
+  card: {
+    backgroundColor: "#fff",
+    padding: 24,
+    borderRadius: 12,
+    width: "100%",
+    maxWidth: 480,
+    boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+  },
+  cardTitle: { fontSize: 20, marginBottom: 20 },
+  label: { display: "block", marginTop: 12, marginBottom: 6, fontWeight: 500 },
   input: {
-    padding: "8px 16px",
-    borderRadius: 4,
+    width: "100%",
+    padding: "10px 14px",
+    borderRadius: 8,
     border: "1px solid #ccc",
-    fontSize: 16,
-    width: 280,
+    fontSize: 15,
+    outline: "none",
+    marginBottom: 12,
   },
-  select: {
-    padding: "8px 16px",
-    borderRadius: 4,
-    border: "1px solid #ccc",
-    fontSize: 16,
-    width: 300,
-  },
-  inputContainer: { display: "flex", flexDirection: "column", gap: 12 },
-  loginButton: {
-    backgroundColor: "#2196F3",
+  primaryButton: {
+    width: "100%",
+    padding: "12px",
+    backgroundColor: "#2563eb",
     color: "#fff",
-    padding: "12px 24px",
     border: "none",
+    borderRadius: 8,
     cursor: "pointer",
-    borderRadius: 4,
-    fontSize: 16,
-    marginTop: 20,
+    fontWeight: 600,
+    marginTop: 10,
   },
-  logoLogin: { width: 120, height: 40, marginBottom: 16 },
+  loginPage: {
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    minHeight: "100vh",
+    background: "linear-gradient(135deg, #2563eb, #1e40af)",
+  },
+  loginCard: {
+    background: "#fff",
+    padding: 32,
+    borderRadius: 12,
+    boxShadow: "0 8px 20px rgba(0,0,0,0.15)",
+    width: "100%",
+    maxWidth: 360,
+    display: "flex",
+    flexDirection: "column",
+    gap: 14,
+  },
+  loginTitle: { textAlign: "center", marginBottom: 12 },
+  logoLogin: {
+    width: 120,
+    height: 40,
+    margin: "0 auto 12px auto",
+    display: "block",
+  },
+  notification: {
+    position: "fixed",
+    top: 20,
+    right: 20,
+    backgroundColor: "#16a34a",
+    color: "#fff",
+    padding: "12px 20px",
+    borderRadius: 8,
+    boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+  },
 };
 
 export default App;
