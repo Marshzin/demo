@@ -9,7 +9,7 @@ import "./styles.css";
   - RibeiraoShopping: 000
   - DomPedro: 456
   - Iguatemi: 789
-  - Adminstrador: demo1234
+  - Administrador: demo1234
 */
 const ACCOUNTS = [
   { usuario: "NovoShopping", loja: "NovoShopping", isAdmin: false },
@@ -31,11 +31,15 @@ const LOJAS = ["NovoShopping", "RibeiraoShopping", "DomPedro", "Iguatemi"];
 const LS_PEDIDOS_KEY = "pedidosERP_v1";
 const LOGO_URL = "/logo.jpeg"; // ajuste se necessário
 
+// Restaurar login salvo
+const savedUsuario = localStorage.getItem("erp_usuarioAtual");
+const savedIsAdmin = localStorage.getItem("erp_isAdmin") === "1";
+
 export default function App() {
   // Auth
-  const [logado, setLogado] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [usuarioAtual, setUsuarioAtual] = useState(null);
+  const [logado, setLogado] = useState(!!savedUsuario);
+  const [isAdmin, setIsAdmin] = useState(savedIsAdmin);
+  const [usuarioAtual, setUsuarioAtual] = useState(savedUsuario || null);
 
   // UI / tabs
   const [abaAtiva, setAbaAtiva] = useState("transferencia"); // transferencia | pedidos | admin
@@ -255,6 +259,9 @@ export default function App() {
     setIsAdmin(!!acc.isAdmin);
     setLogado(true);
 
+    localStorage.setItem("erp_usuarioAtual", acc.usuario);
+    localStorage.setItem("erp_isAdmin", acc.isAdmin ? "1" : "0");
+
     if (acc.isAdmin) {
       setRemetente(LOJAS[0]);
       setDestinatario(LOJAS[1]);
@@ -273,6 +280,8 @@ export default function App() {
     setManualCodigo("");
     setRemetente(LOJAS[0]);
     setDestinatario(LOJAS[1]);
+    localStorage.removeItem("erp_usuarioAtual");
+    localStorage.removeItem("erp_isAdmin");
   };
 
   // admin: delete individual pedido
@@ -343,7 +352,7 @@ export default function App() {
             <button
               className="btn"
               onClick={() => {
-                alert("Logins: NovoShopping: 123\nRibeiraoShopping: 000\nDomPedro: 456\nIguatemi: 789\nAdministrador: demo1234");
+                alert("Logins:\nNovoShopping: 123\nRibeiraoShopping: 000\nDomPedro: 456\nIguatemi: 789\nAdministrador: demo1234");
               }}
             >
               Ajuda
