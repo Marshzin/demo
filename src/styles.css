@@ -5,23 +5,20 @@
   100% { opacity: 0; transform: translateY(-10px); }
 }
 
-.notificacao {
+.popup {
   position: fixed;
   top: 20px;
   right: 20px;
+  background: #2ecc71;
+  color: white;
   padding: 12px 20px;
   border-radius: 8px;
-  font-weight: 600;
+  font-weight: bold;
   box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-  z-index: 1000;
-  color: #fff;
   animation: fadeinout 3s ease forwards;
+  z-index: 1000;
 }
 
-.notificacao.sucesso {
-  background: #2ecc71;
-}
-
-.notificacao.erro {
+.popup:contains("❌") {
   background: #e74c3c;
 }
