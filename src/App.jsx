@@ -18,7 +18,7 @@ const lojas = ["NovoShopping", "RibeiraoShopping", "DomPedro", "Iguatemi"];
 const logoUrl = "/logo.jpeg";
 const LS_KEY = "pedidosERP";
 
-function App() {
+export default function App() {
   const [logado, setLogado] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [usuarioAtual, setUsuarioAtual] = useState(null);
@@ -120,10 +120,11 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
 
   return (
     <div style={ui.appContainer}>
+      {/* 🔹 HEADER FIXA */}
       <header style={ui.header}>
         <img src={logoUrl} alt="Logo" style={ui.logo} />
         <h1 style={ui.title}>Painel de Transferência</h1>
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+        <div style={ui.userBox}>
           <span style={ui.user}>{usuarioAtual}</span>
           <button onClick={onLogout} style={ui.logoutButton}>
             Sair
@@ -190,7 +191,7 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
   );
 }
 
-// Novo estilo clean
+// 🔹 ESTILOS CLEAN COM HEADER FIXO
 const ui = {
   appContainer: {
     fontFamily: "'Segoe UI', sans-serif",
@@ -200,24 +201,39 @@ const ui = {
     flexDirection: "column",
   },
   header: {
-    backgroundColor: "#1f2937",
-    padding: "16px 32px",
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+    backgroundColor: "#2563eb",
+    padding: "12px 24px",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
     color: "#fff",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+    boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
   },
-  logo: { width: 140, height: 40, objectFit: "contain" },
-  title: { fontSize: 22, fontWeight: 600 },
+  logo: { width: 120, height: 36, objectFit: "contain" },
+  title: { fontSize: 20, fontWeight: 600 },
+  userBox: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    padding: "6px 12px",
+    borderRadius: 8,
+  },
   user: { fontWeight: 500 },
   logoutButton: {
     backgroundColor: "#ef4444",
     color: "#fff",
-    padding: "8px 16px",
+    padding: "6px 12px",
     border: "none",
     borderRadius: 6,
     cursor: "pointer",
+    fontWeight: 500,
+    fontSize: 14,
   },
   tabs: {
     display: "flex",
@@ -225,6 +241,7 @@ const ui = {
     padding: "8px 16px",
     borderBottom: "1px solid #ddd",
     gap: 12,
+    marginTop: 80, // ⬅ espaço abaixo da header fixa
   },
   tab: {
     padding: "10px 18px",
@@ -244,7 +261,7 @@ const ui = {
   },
   main: {
     flex: 1,
-    padding: 24,
+    padding: "100px 24px 24px", // ⬅ espaço para header fixa
     display: "flex",
     justifyContent: "center",
     alignItems: "flex-start",
@@ -254,19 +271,21 @@ const ui = {
     padding: 24,
     borderRadius: 12,
     width: "100%",
-    maxWidth: 480,
+    maxWidth: 460,
     boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
   },
   cardTitle: { fontSize: 20, marginBottom: 20 },
   label: { display: "block", marginTop: 12, marginBottom: 6, fontWeight: 500 },
   input: {
     width: "100%",
+    maxWidth: "100%",
     padding: "10px 14px",
     borderRadius: 8,
     border: "1px solid #ccc",
     fontSize: 15,
     outline: "none",
     marginBottom: 12,
+    boxSizing: "border-box",
   },
   primaryButton: {
     width: "100%",
@@ -315,5 +334,3 @@ const ui = {
     boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
   },
 };
-
-export default App;
