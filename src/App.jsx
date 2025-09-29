@@ -45,7 +45,9 @@ export default function App() {
   });
 
   // transferencia inputs
-  const [destinatario, setDestinatario] = useState(LOJAS[0]);
+  // Remetente e Destinatario
+  const [remetente, setRemetente] = useState(LOJAS[0]);
+  const [destinatario, setDestinatario] = useState(LOJAS[1]);
   const [vendedor, setVendedor] = useState("");
   const [manualCodigo, setManualCodigo] = useState("");
 
@@ -60,7 +62,7 @@ export default function App() {
   const scannerTimeout = useRef(null);
 
   // trava anti-duplicidade
-  const ultimaTransferencia = useRef({ codigoProduto: null, destinatario: null, timestamp: 0 });
+  const ultimaTransferencia = useRef({ codigoProduto: null, destinatario: null, remetente: null, timestamp: 0 });
 
   // modal de histórico de enviados
   const [showHistorico, setShowHistorico] = useState(false);
@@ -119,16 +121,12 @@ export default function App() {
   // -------- scanner global listener (keyboard-emulating scanners) ----------
   useEffect(() => {
     const onKeyDown = (e) => {
-      // ignore certain modifier-only events
       if (e.key === "Shift" || e.key === "Control" || e.key === "Alt" || e.key === "Meta") return;
-
-      // If focused element is text input, still capture: scanner usually sends to focused input but global capture ensures it works.
       if (e.key === "Enter") {
         const code = scannerBuffer.current.trim();
         if (code.length > 0) {
           processarCodigo(code);
         } else {
-          // fallback: if manual input field has value and Enter pressed (user typed), process it
           const manualEl = document.getElementById("manualCodigoInput");
           const manualVal = manualEl ? (manualEl.value || "").trim() : "";
           if (manualVal) processarCodigo(manualVal);
@@ -140,7 +138,6 @@ export default function App() {
         }
       } else if (e.key.length === 1) {
         scannerBuffer.current += e.key;
-        // clear buffer quickly after inactivity — scanners send fast
         if (scannerTimeout.current) clearTimeout(scannerTimeout.current);
         scannerTimeout.current = setTimeout(() => {
           scannerBuffer.current = "";
@@ -151,8 +148,7 @@ export default function App() {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [catalogo, destinatario, vendedor, usuarioAtual, pedidos]);
+  }, [catalogo, destinatario, remetente, vendedor, usuarioAtual, pedidos]);
 
   // manual input handler (Enter)
   const onManualKeyDown = (e) => {
@@ -175,12 +171,12 @@ export default function App() {
       showNotificacao("Faça login primeiro.", "erro");
       return;
     }
-    if (!destinatario) {
-      showNotificacao("Selecione o destinatário (a loja que pediu).", "erro");
+    if (!remetente || !destinatario) {
+      showNotificacao("Selecione o remetente e destinatário.", "erro");
       return;
     }
-    if (destinatario === usuarioAtual) {
-      showNotificacao("Destinatário não pode ser sua própria loja.", "erro");
+    if (remetente === destinatario) {
+      showNotificacao("Remetente e destinatário não podem ser a mesma loja.", "erro");
       return;
     }
 
@@ -209,6 +205,7 @@ export default function App() {
     if (
       ultimaTransferencia.current.codigoProduto === encontrado.codigoProduto &&
       ultimaTransferencia.current.destinatario === destinatario &&
+      ultimaTransferencia.current.remetente === remetente &&
       agora - ultimaTransferencia.current.timestamp < 500
     ) {
       return; // ignora chamada duplicada
@@ -216,13 +213,12 @@ export default function App() {
     ultimaTransferencia.current = {
       codigoProduto: encontrado.codigoProduto,
       destinatario,
+      remetente,
       timestamp: agora,
     };
 
-    // Limpa vendedor ao enviar
     setVendedor("");
 
-    // criar pedido: destinatario = loja que pediu (vai ver na aba dela)
     const novoPedido = {
       id: Date.now().toString() + "-" + Math.random().toString(36).slice(2, 9),
       itemId: encontrado.id,
@@ -232,13 +228,14 @@ export default function App() {
       descricao: encontrado.descricao,
       referencia: encontrado.referencia,
       destinatario,
-      origem: usuarioAtual,
-      vendedor: "", // Apaga vendedor!
+      remetente,
+      origem: remetente,
+      vendedor: "",
       data: new Date().toISOString(),
     };
 
     setPedidos((old) => [novoPedido, ...old]);
-    showNotificacao(`Item transferido p/ ${destinatario} — ${encontrado.descricao}`, "sucesso");
+    showNotificacao(`Item transferido de ${remetente} p/ ${destinatario} — ${encontrado.descricao}`, "sucesso");
   };
 
   // show notification message (auto hide)
@@ -263,8 +260,9 @@ export default function App() {
     setIsAdmin(!!acc.isAdmin);
     setLogado(true);
 
-    // set default destinatario to first shop != usuarioAtual
+    // set default remetente e destinatario
     const firstOther = LOJAS.find((l) => l !== acc.usuario);
+    setRemetente(acc.usuario);
     setDestinatario(firstOther || "");
   };
 
@@ -273,6 +271,8 @@ export default function App() {
     setIsAdmin(false);
     setUsuarioAtual(null);
     setAbaAtiva("transferencia");
+    setRemetente(LOJAS[0]);
+    setDestinatario(LOJAS[1]);
     setVendedor("");
     setManualCodigo("");
   };
@@ -283,20 +283,14 @@ export default function App() {
     setPedidos((old) => old.filter((p) => p.id !== id));
   };
 
-  // admin: delete all requests for selected loja (requests made FOR that loja)
-  const adminExcluirTodosDaLoja = (loja) => {
-    if (!window.confirm(`Excluir TODOS os pedidos destinados a ${loja}?`)) return;
-    setPedidos((old) => old.filter((p) => p.destinatario !== loja));
-  };
-
   // pedidos que deverão aparecer na aba "Itens Pedidos" da loja logada:
   const pedidosParaMinhaLoja = pedidos.filter((p) => p.destinatario === usuarioAtual);
 
-  // pedidos feitos pela loja X? In admin we will show pedidos where 'origem' === loja (if you want). 
-  const pedidosFeitosPorLoja = (loja) => pedidos.filter((p) => p.origem === loja);
+  // pedidos feitos pela loja X? (por remetente)
+  const pedidosFeitosPorLoja = (loja) => pedidos.filter((p) => p.remetente === loja);
 
-  // Histórico de enviados por essa loja
-  const historicoEnviados = pedidos.filter((p) => p.origem === usuarioAtual);
+  // Histórico de enviados por essa loja (remetente)
+  const historicoEnviados = pedidos.filter((p) => p.remetente === usuarioAtual);
 
   // Excluir do histórico
   const excluirEnviado = (id) => {
@@ -383,24 +377,6 @@ export default function App() {
           <button className="btn danger" onClick={handleLogout} style={{ zIndex: 1 }}>
             Sair
           </button>
-          {/* Ícone de interrogação abaixo de "Sair" */}
-          <button
-            title="Histórico de itens enviados"
-            style={{
-              background: "none",
-              border: "none",
-              padding: 0,
-              marginTop: 4,
-              cursor: "pointer",
-              fontSize: 18,
-              color: "#555",
-              width: 22,
-              height: 22,
-            }}
-            onClick={() => setShowHistorico(true)}
-          >
-            <span aria-label="Histórico" style={{ fontSize: "1em" }}>❓</span>
-          </button>
         </div>
       </header>
 
@@ -416,10 +392,16 @@ export default function App() {
             <h3>Registrar / Bipar Item</h3>
 
             <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 12 }}>
+              <label style={{ fontWeight: 700 }}>Remetente (quem envia):</label>
+              <select value={remetente} onChange={(e) => setRemetente(e.target.value)} className="erpf-select">
+                <option value="">-- selecione --</option>
+                {LOJAS.map((l) => <option key={l} value={l}>{l}</option>)}
+              </select>
+
               <label style={{ fontWeight: 700 }}>Destinatário (quem pediu):</label>
               <select value={destinatario} onChange={(e) => setDestinatario(e.target.value)} className="erpf-select">
                 <option value="">-- selecione --</option>
-                {LOJAS.filter((l) => l !== usuarioAtual).map((l) => <option key={l} value={l}>{l}</option>)}
+                {LOJAS.filter((l) => l !== remetente).map((l) => <option key={l} value={l}>{l}</option>)}
               </select>
 
               <label style={{ fontWeight: 700 }}>Vendedor:</label>
@@ -454,7 +436,7 @@ export default function App() {
                     <div className="grid-card-sub">Ref: {p.referencia}</div>
                     <div className="grid-card-sub">Cód: {p.codigoBarra}</div>
                     <div className="grid-card-sub">Vendedor: {p.vendedor}</div>
-                    <div className="grid-card-sub small">Registrado por: {p.origem} • {new Date(p.data).toLocaleString()}</div>
+                    <div className="grid-card-sub small">Remetente: {p.remetente} • {new Date(p.data).toLocaleString()}</div>
                     <div style={{ marginTop: 6 }}><Barcode value={String(p.codigoBarra)} height={40} width={1.4} /></div>
                   </div>
                 ))}
@@ -466,18 +448,15 @@ export default function App() {
         {abaAtiva === "admin" && isAdmin && (
           <section className="card">
             <h3>Administração</h3>
-
             <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
-              <label style={{ fontWeight: 700 }}>Ver pedidos feitos por:</label>
+              <label style={{ fontWeight: 700 }}>Ver pedidos enviados por:</label>
               <select value={lojaSelecionada} onChange={(e) => setLojaSelecionada(e.target.value)} className="erpf-select">
                 {LOJAS.map((l) => <option key={l} value={l}>{l}</option>)}
               </select>
-              <button className="btn danger" onClick={() => adminExcluirTodosDaLoja(lojaSelecionada)}>Excluir todos os pedidos feitos por {lojaSelecionada}</button>
             </div>
-
             <div>
               {pedidosFeitosPorLoja(lojaSelecionada).length === 0 ? (
-                <p style={{ color: "#666" }}>Nenhum pedido registrado por {lojaSelecionada}.</p>
+                <p style={{ color: "#666" }}>Nenhum pedido enviado por {lojaSelecionada}.</p>
               ) : (
                 <div className="grid">
                   {pedidosFeitosPorLoja(lojaSelecionada).map((p) => (
@@ -526,7 +505,7 @@ export default function App() {
               padding: 24,
               minWidth: 320,
               maxWidth: 440,
-              maxHeight: "80vh", // Altura máxima do modal
+              maxHeight: "80vh",
               boxShadow: "0 2px 14px rgba(0,0,0,0.18)",
               position: "relative",
               display: "flex",
@@ -538,7 +517,7 @@ export default function App() {
             <div style={{
               flex: 1,
               overflowY: "auto",
-              maxHeight: "52vh", // Altura máxima para a lista, ajustável
+              maxHeight: "52vh",
               marginBottom: 8
             }}>
               {historicoEnviados.length === 0 ? (
