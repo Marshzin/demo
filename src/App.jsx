@@ -456,9 +456,8 @@ export default function App() {
                   <div className="grid-card" key={p.id}>
                     <div className="grid-card-title">{p.descricao}</div>
                     <div className="grid-card-sub">Ref: {p.referencia}</div>
-                    <div className="grid-card-sub">Cód: {p.codigoBarra}</div>
                     <div className="grid-card-sub">Solicitante: {p.vendedor}</div>
-                    <div className="grid-card-sub small">Remetente: {p.remetente} • {new Date(p.data).toLocaleString()}</div>
+                    <div className="grid-card-sub small">{p.remetente} • {new Date(p.data).toLocaleString()}</div>
                     <div style={{ marginTop: 6 }}><Barcode value={String(p.codigoBarra)} height={40} width={1.4} /></div>
                   </div>
                 ))}
