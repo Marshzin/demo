@@ -26,6 +26,7 @@ function App() {
     const storedLogin = localStorage.getItem("logado");
     const storedIsAdmin = localStorage.getItem("isAdmin") === "true";
     const storedUsuario = localStorage.getItem("usuarioAtual");
+
     if (storedLogin) setLogado(true);
     if (storedIsAdmin) setIsAdmin(true);
     if (storedUsuario) setUsuarioAtual(storedUsuario);
@@ -44,6 +45,7 @@ function App() {
       localStorage.setItem("logado", "true");
       localStorage.setItem("isAdmin", usuarioEncontrado.isAdmin ? "true" : "false");
       localStorage.setItem("usuarioAtual", usuarioEncontrado.usuario);
+
       setLogado(true);
       setIsAdmin(usuarioEncontrado.isAdmin);
       setUsuarioAtual(usuarioEncontrado.usuario);
@@ -56,6 +58,7 @@ function App() {
     localStorage.removeItem("logado");
     localStorage.removeItem("isAdmin");
     localStorage.removeItem("usuarioAtual");
+
     setLogado(false);
     setIsAdmin(false);
     setUsuarioAtual(null);
@@ -78,6 +81,7 @@ function Login({ onLogin }) {
     <div style={styles.login}>
       <img src={logoUrl} alt="Logo" style={styles.logoLogin} />
       <h1 style={{ marginBottom: 20 }}>Transferência de Produtos</h1>
+
       <div style={styles.inputContainer}>
         <select
           value={usuario}
@@ -90,6 +94,7 @@ function Login({ onLogin }) {
             </option>
           ))}
         </select>
+
         <input
           type="password"
           placeholder="Senha"
@@ -98,6 +103,7 @@ function Login({ onLogin }) {
           style={styles.input}
         />
       </div>
+
       <button onClick={handleLoginClick} style={styles.loginButton}>
         Entrar
       </button>
@@ -112,11 +118,14 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
     const raw = localStorage.getItem(LS_KEY);
     return raw ? JSON.parse(raw) : [];
   });
+
   const [codigoDigitado, setCodigoDigitado] = useState("");
-  const [destinatario, setDestinatario] = useState(
-    lojas.find((l) => l !== usuarioAtual) || lojas[0]
-  );
-  const [vendedor, setVendedor] = useState(""); // Novo estado para vendedor
+  const [itensEncontrados, setItensEncontrados] = useState([]);
+  const [itemSelecionado, setItemSelecionado] = useState(null);
+  const [destinatario, setDestinatario] =
+    useState(lojas.find((l) => l !== usuarioAtual) || lojas[0]);
+  const [lojaSelecionada, setLojaSelecionada] = useState(lojas[0]);
+  const [vendedor, setVendedor] = useState("");
   const [showNotification, setShowNotification] = useState(false);
 
   const scannerBuffer = useRef("");
@@ -166,9 +175,45 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
       })
       .catch((err) => {
         console.error("Erro lendo itens.xls", err);
-        alert("Erro ao carregar itens.xls. Verifique o arquivo na pasta public/ e os nomes das colunas.");
+        alert(
+          "Erro ao carregar itens.xls. Verifique o arquivo na pasta public/ e os nomes das colunas."
+        );
       });
   }, []);
+
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      const active = document.activeElement;
+      const activeTag = active && active.tagName && active.tagName.toLowerCase();
+      const activeIsInput =
+        activeTag === "input" || activeTag === "textarea" || active.isContentEditable;
+
+      if (e.key === "Enter") {
+        const code = scannerBuffer.current.trim();
+        if (code.length > 0) {
+          processarCodigo(code);
+        } else {
+          const manual = (document.getElementById("manualCodigoInput") || {}).value;
+          if (manual && manual.trim().length > 0) processarCodigo(manual.trim());
+        }
+        scannerBuffer.current = "";
+        if (scannerTimeout.current) {
+          clearTimeout(scannerTimeout.current);
+          scannerTimeout.current = null;
+        }
+      } else if (e.key.length === 1) {
+        scannerBuffer.current += e.key;
+        if (scannerTimeout.current) clearTimeout(scannerTimeout.current);
+        scannerTimeout.current = setTimeout(() => {
+          scannerBuffer.current = "";
+          scannerTimeout.current = null;
+        }, 80);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [itens, destinatario, usuarioAtual, pedidos]);
 
   const handleManualChange = (e) => setCodigoDigitado(e.target.value);
 
@@ -183,7 +228,11 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
   };
 
   const processarCodigo = (valorOriginal) => {
-    const valor = String(valorOriginal || "").replace(/[^\w\d]/g, "").trim().toLowerCase();
+    const valor = String(valorOriginal || "")
+      .replace(/[^\w\d]/g, "")
+      .trim()
+      .toLowerCase();
+
     if (!valor) return;
 
     const encontrado = itens.find((it) => {
@@ -191,6 +240,7 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
       if (String(it.codigo || "").toLowerCase() === valor) return true;
       if (String(it.referencia || "").toLowerCase() === valor) return true;
       if (String(it.codigoBarra || "").toLowerCase() === valor) return true;
+
       if (Array.isArray(it.codigosBarras)) {
         for (const cb of it.codigosBarras) {
           if (String(cb || "").toLowerCase() === valor) return true;
@@ -209,7 +259,6 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
         registrarPedido(foundByEnds);
         return;
       }
-
       alert(`Nenhum item encontrado para: ${valorOriginal}`);
       return;
     }
@@ -230,7 +279,7 @@ function MainApp({ onLogout, isAdmin, usuarioAtual }) {
       referencia: item.referencia,
       destinatario,
       origem: usuarioAtual,
-      vendedor, // Adiciona o vendedor
+      vendedor,
       data: new Date().toISOString(),
     };
 
