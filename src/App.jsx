@@ -100,7 +100,11 @@ export default function App() {
             .split("|")
             .map((c) => c.replace(/[^0-9A-Za-z]/g, "").trim())
             .filter((c) => c.length > 0);
-          const codigoBarra = codigosBarras.length > 0 ? [...codigosBarras][0] : codigoProduto;
+          // Pega o código de barras mais longo (ou o de 13 dígitos se houver)
+          const codigoBarra =
+            codigosBarras.find(cb => cb.length === 13) ||
+            codigosBarras.sort((a, b) => b.length - a.length)[0] ||
+            codigoProduto;
           const descricao = String(row["Descrição Completa"] ?? "Sem descrição").trim();
           const referencia = String(row["Referência"] ?? "").trim();
           return {
