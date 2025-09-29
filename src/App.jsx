@@ -77,6 +77,13 @@ export default function App() {
   // modal de histórico de enviados
   const [showHistorico, setShowHistorico] = useState(false);
 
+  // modal de cadastro manual de item não encontrado
+  const [showProdutoManual, setShowProdutoManual] = useState(false);
+  const [referenciaManual, setReferenciaManual] = useState("");
+  const [numeracaoManual, setNumeracaoManual] = useState("");
+  const [solicitanteManual, setSolicitanteManual] = useState("");
+  const [codigoNaoEncontrado, setCodigoNaoEncontrado] = useState("");
+
   // load itens.xls on mount
   useEffect(() => {
     fetch("/itens.xls")
@@ -170,7 +177,6 @@ export default function App() {
       showNotificacao("Faça login primeiro.", "erro");
       return;
     }
-    // ADMIN: requer remetente e destinatario. Loja: só destinatario.
     const remetenteValidado = (isAdmin && usuarioAtual === 'Administrador') ? remetente : usuarioAtual;
     if (!remetenteValidado || !destinatario) {
       showNotificacao("Selecione o remetente e destinatário.", "erro");
@@ -197,7 +203,11 @@ export default function App() {
     }
 
     if (!encontrado) {
-      showNotificacao(`Produto não encontrado: ${valorOriginal}`, "erro");
+      setCodigoNaoEncontrado(valorOriginal);
+      setShowProdutoManual(true);
+      setReferenciaManual("");
+      setNumeracaoManual("");
+      setSolicitanteManual("");
       return;
     }
 
@@ -236,6 +246,31 @@ export default function App() {
 
     setPedidos((old) => [novoPedido, ...old]);
     showNotificacao(`Item transferido de ${remetenteValidado} p/ ${destinatario} — ${encontrado.descricao}`, "sucesso");
+  };
+
+  const cadastrarProdutoManual = () => {
+    if (!referenciaManual.trim() || !numeracaoManual.trim()) {
+      showNotificacao("Preencha todos os campos obrigatórios.", "erro");
+      return;
+    }
+    const remetenteValidado = (isAdmin && usuarioAtual === 'Administrador') ? remetente : usuarioAtual;
+    const novoPedido = {
+      id: Date.now().toString() + "-" + Math.random().toString(36).slice(2, 9),
+      itemId: "manual-" + Date.now(),
+      codigoProduto: codigoNaoEncontrado,
+      codigoBarra: codigoNaoEncontrado,
+      codigosBarras: [codigoNaoEncontrado],
+      descricao: `Produto manual - Ref: ${referenciaManual} - Numeração: ${numeracaoManual}`,
+      referencia: referenciaManual,
+      destinatario,
+      remetente: remetenteValidado,
+      origem: remetenteValidado,
+      vendedor: solicitanteManual.trim(),
+      data: new Date().toISOString(),
+    };
+    setPedidos((old) => [novoPedido, ...old]);
+    setShowProdutoManual(false);
+    showNotificacao(`Item manual transferido de ${remetenteValidado} p/ ${destinatario} — ${referenciaManual}`, "sucesso");
   };
 
   const showNotificacao = (msg, tipo = "sucesso") => {
@@ -290,22 +325,15 @@ export default function App() {
     setPedidos((old) => old.filter((p) => p.id !== id));
   };
 
-  // pedidos que deverão aparecer na aba "Itens Pedidos" da loja logada:
   const pedidosParaMinhaLoja = pedidos.filter((p) => p.destinatario === usuarioAtual);
-
-  // Histórico de transferências recebidas por loja (admin view)
   const historicoLojaAdmin = (loja) => pedidos.filter((p) => p.destinatario === loja);
-
-  // Histórico de enviados por essa loja
   const historicoEnviados = pedidos.filter((p) => p.remetente === usuarioAtual);
 
-  // Excluir do histórico
   const excluirEnviado = (id) => {
     if (!window.confirm("Excluir este item do seu histórico?")) return;
     setPedidos((old) => old.filter((p) => p.id !== id));
   };
 
-  // TAB BUTTONS: Remove "Itens Pedidos" for Administrador
   const showPedidosTab = !(isAdmin && usuarioAtual === "Administrador");
 
   if (!logado) {
@@ -383,7 +411,6 @@ export default function App() {
           <button className="btn danger" onClick={handleLogout} style={{ zIndex: 1 }}>
             Sair
           </button>
-          {/* Só mostra o ícone de ? para LOJA, não para admin */}
           {(!isAdmin || usuarioAtual !== "Administrador") && (
             <button
               title="Histórico de itens enviados"
@@ -415,12 +442,10 @@ export default function App() {
       </nav>
 
       <main className="erp-main">
-        {/* Transferência: admin tem Remetente, loja não */}
         {abaAtiva === "transferencia" && (
           <section className="card">
             <h3>Registrar / Bipar Item</h3>
             <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 12 }}>
-              {/* Só mostra remetente para admin */}
               {isAdmin && usuarioAtual === "Administrador" && (
                 <>
                   <label style={{ fontWeight: 700 }}>Remetente:</label>
@@ -453,7 +478,6 @@ export default function App() {
           </section>
         )}
 
-        {/* Aba "Itens Pedidos" só aparece se NÃO for o admin */}
         {abaAtiva === "pedidos" && showPedidosTab && (
           <section className="card">
             <h3>Itens Pedidos para {usuarioAtual}</h3>
@@ -475,7 +499,6 @@ export default function App() {
           </section>
         )}
 
-        {/* Administração — só para Administrador */}
         {abaAtiva === "admin" && isAdmin && usuarioAtual === "Administrador" && (
           <section className="card">
             <h3>Administração</h3>
@@ -511,98 +534,174 @@ export default function App() {
             </div>
           </section>
         )}
-      </main>
 
-      {/* Modal Histórico de enviados com scroll */}
-      {showHistorico && (
-        <div
-          style={{
-            position: "fixed",
-            left: 0,
-            top: 0,
-            width: "100vw",
-            height: "100vh",
-            background: "rgba(0,0,0,0.15)",
-            zIndex: 9999,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center"
-          }}
-          onClick={() => setShowHistorico(false)}
-        >
+        {/* MODAL de cadastro manual de produto não encontrado */}
+        {showProdutoManual && (
           <div
             style={{
-              background: "white",
-              borderRadius: 8,
-              padding: 24,
-              minWidth: 320,
-              maxWidth: 440,
-              maxHeight: "80vh",
-              boxShadow: "0 2px 14px rgba(0,0,0,0.18)",
-              position: "relative",
+              position: "fixed",
+              left: 0,
+              top: 0,
+              width: "100vw",
+              height: "100vh",
+              background: "rgba(0,0,0,0.15)",
+              zIndex: 9999,
               display: "flex",
-              flexDirection: "column"
+              alignItems: "center",
+              justifyContent: "center"
             }}
-            onClick={e => e.stopPropagation()}
+            onClick={() => setShowProdutoManual(false)}
           >
-            <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 10 }}>Histórico de itens enviados</div>
-            <div style={{
-              flex: 1,
-              overflowY: "auto",
-              maxHeight: "52vh",
-              marginBottom: 8
-            }}>
-              {historicoEnviados.length === 0 ? (
-                <div style={{ color: "#666" }}>Nenhum item enviado por esta loja.</div>
-              ) : (
-                <div>
-                  {historicoEnviados.map(p => (
-                    <div key={p.id} style={{
-                      border: "1px solid #eee",
-                      borderRadius: 5,
-                      padding: 10,
-                      marginBottom: 12,
-                      fontSize: 15,
-                      background: "#f7fbff",
-                      position: "relative"
-                    }}>
-                      <div style={{ fontWeight: 600 }}>{p.descricao}</div>
-                      <div style={{ fontSize: 13 }}>Ref: {p.referencia}</div>
-                      <div style={{ fontSize: 13 }}>Cód: {p.codigoBarra}</div>
-                      <div style={{ fontSize: 12, color: "#888" }}>Destinatário: {p.destinatario}</div>
-                      <div style={{ fontSize: 12, color: "#888" }}>Solicitante: {p.vendedor}</div>
-                      <div style={{ fontSize: 12, color: "#888" }}>Data: {new Date(p.data).toLocaleString()}</div>
-                      <div style={{ marginTop: 3 }}>
-                        <Barcode value={String(p.codigoBarra)} height={28} width={1.2} fontSize={11} />
-                      </div>
-                      <button
-                        className="btn danger"
-                        style={{ position: "absolute", right: 10, top: 10, fontSize: 12, padding: "2px 7px" }}
-                        onClick={() => excluirEnviado(p.id)}
-                      >
-                        Excluir
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <button
-              className="btn"
-              style={{ marginTop: 10, width: "100%" }}
-              onClick={() => setShowHistorico(false)}
+            <div
+              style={{
+                background: "white",
+                borderRadius: 8,
+                padding: 24,
+                minWidth: 320,
+                maxWidth: 440,
+                boxShadow: "0 2px 14px rgba(0,0,0,0.18)",
+                position: "relative",
+                display: "flex",
+                flexDirection: "column"
+              }}
+              onClick={e => e.stopPropagation()}
             >
-              Fechar
-            </button>
+              <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 12, color: "#c00" }}>
+                Produto não encontrado
+              </div>
+              <div style={{ fontSize: 14, color: "#333", marginBottom: 10 }}>
+                Código digitado/bipado: <b>{codigoNaoEncontrado}</b>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <input
+                  placeholder="Referência (obrigatório)"
+                  value={referenciaManual}
+                  onChange={e => setReferenciaManual(e.target.value)}
+                  style={{ padding: 8, border: "1px solid #bbb", borderRadius: 4 }}
+                  autoFocus
+                />
+                <input
+                  placeholder="Numeração (obrigatório)"
+                  value={numeracaoManual}
+                  onChange={e => setNumeracaoManual(e.target.value)}
+                  style={{ padding: 8, border: "1px solid #bbb", borderRadius: 4 }}
+                />
+                <input
+                  placeholder="Solicitante"
+                  value={solicitanteManual}
+                  onChange={e => setSolicitanteManual(e.target.value)}
+                  style={{ padding: 8, border: "1px solid #bbb", borderRadius: 4 }}
+                />
+              </div>
+              <button
+                className="btn primary"
+                style={{ marginTop: 18, width: "100%" }}
+                onClick={cadastrarProdutoManual}
+              >
+                Adicionar item manual
+              </button>
+              <button
+                className="btn"
+                style={{ marginTop: 8, width: "100%" }}
+                onClick={() => setShowProdutoManual(false)}
+              >
+                Cancelar
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {notificacao && (
-        <div className={`toast ${notificacao.tipo}`}>
-          {notificacao.msg}
-        </div>
-      )}
+        {/* Modal Histórico de enviados com scroll */}
+        {showHistorico && (
+          <div
+            style={{
+              position: "fixed",
+              left: 0,
+              top: 0,
+              width: "100vw",
+              height: "100vh",
+              background: "rgba(0,0,0,0.15)",
+              zIndex: 9999,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }}
+            onClick={() => setShowHistorico(false)}
+          >
+            <div
+              style={{
+                background: "white",
+                borderRadius: 8,
+                padding: 24,
+                minWidth: 320,
+                maxWidth: 440,
+                maxHeight: "80vh",
+                boxShadow: "0 2px 14px rgba(0,0,0,0.18)",
+                position: "relative",
+                display: "flex",
+                flexDirection: "column"
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 10 }}>Histórico de itens enviados</div>
+              <div style={{
+                flex: 1,
+                overflowY: "auto",
+                maxHeight: "52vh",
+                marginBottom: 8
+              }}>
+                {historicoEnviados.length === 0 ? (
+                  <div style={{ color: "#666" }}>Nenhum item enviado por esta loja.</div>
+                ) : (
+                  <div>
+                    {historicoEnviados.map(p => (
+                      <div key={p.id} style={{
+                        border: "1px solid #eee",
+                        borderRadius: 5,
+                        padding: 10,
+                        marginBottom: 12,
+                        fontSize: 15,
+                        background: "#f7fbff",
+                        position: "relative"
+                      }}>
+                        <div style={{ fontWeight: 600 }}>{p.descricao}</div>
+                        <div style={{ fontSize: 13 }}>Ref: {p.referencia}</div>
+                        <div style={{ fontSize: 13 }}>Cód: {p.codigoBarra}</div>
+                        <div style={{ fontSize: 12, color: "#888" }}>Destinatário: {p.destinatario}</div>
+                        <div style={{ fontSize: 12, color: "#888" }}>Solicitante: {p.vendedor}</div>
+                        <div style={{ fontSize: 12, color: "#888" }}>Data: {new Date(p.data).toLocaleString()}</div>
+                        <div style={{ marginTop: 3 }}>
+                          <Barcode value={String(p.codigoBarra)} height={28} width={1.2} fontSize={11} />
+                        </div>
+                        <button
+                          className="btn danger"
+                          style={{ position: "absolute", right: 10, top: 10, fontSize: 12, padding: "2px 7px" }}
+                          onClick={() => excluirEnviado(p.id)}
+                        >
+                          Excluir
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <button
+                className="btn"
+                style={{ marginTop: 10, width: "100%" }}
+                onClick={() => setShowHistorico(false)}
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        )}
+
+        {notificacao && (
+          <div className={`toast ${notificacao.tipo}`}>
+            {notificacao.msg}
+          </div>
+        )}
+      </main>
     </div>
   );
 }
