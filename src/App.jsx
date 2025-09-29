@@ -378,7 +378,7 @@ export default function App() {
             <h3>Registrar / Bipar Item</h3>
 
             <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 12 }}>
-              <label style={{ fontWeight: 700 }}>Destinatário (quem pediu):</label>
+              <label style={{ fontWeight: 700 }}>Destinatário:</label>
               <select value={destinatario} onChange={(e) => setDestinatario(e.target.value)} className="erpf-select">
                 <option value="">-- selecione --</option>
                 {LOJAS.filter((l) => l !== usuarioAtual).map((l) => <option key={l} value={l}>{l}</option>)}
