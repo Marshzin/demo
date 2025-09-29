@@ -202,18 +202,7 @@ export default function App() {
       return;
     }
 
-    // VERIFICA SE JÁ EXISTE UM PEDIDO IGUAL PARA ESSE DESTINATÁRIO E PRODUTO
-    const existePedido = pedidos.some(
-      (p) =>
-        p.codigoProduto === encontrado.codigoProduto &&
-        p.destinatario === destinatario &&
-        p.origem === usuarioAtual
-    );
-
-    if (existePedido) {
-      showNotificacao(`Este item já foi transferido para ${destinatario}.`, "erro");
-      return;
-    }
+    // REMOVIDA A VERIFICAÇÃO DE DUPLICIDADE
 
     // criar pedido: destinatario = loja que pediu (vai ver na aba dela)
     const novoPedido = {
@@ -286,8 +275,6 @@ export default function App() {
   const pedidosParaMinhaLoja = pedidos.filter((p) => p.destinatario === usuarioAtual);
 
   // pedidos feitos pela loja X? In admin we will show pedidos where 'origem' === loja (if you want). 
-  // The spec wanted admin to see requests of each loja — that'll be pedidos.filter(p => p.origem === loja) OR pedidos.filter(p => p.destinatario === loja)
-  // We'll show pedidos where origem === loja (i.e., requests made BY that loja). Admin select shows both: "Pedidos feitos por" (origem) and/or destined? We'll show pedidos where origem === loja (who requested).
   const pedidosFeitosPorLoja = (loja) => pedidos.filter((p) => p.origem === loja);
 
   // UI: login screen
@@ -317,7 +304,6 @@ export default function App() {
               onChange={(e) => setManualCodigo(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
-                  // login action uses usuarioAtual (default from select)
                   handleLogin(document.getElementById("loginSelect").value, manualCodigo);
                   setManualCodigo("");
                 }
@@ -339,7 +325,6 @@ export default function App() {
             <button
               className="btn"
               onClick={() => {
-                // quick hint of available logins (optional)
                 alert("Logins: NovoShopping, RibeiraoShopping, DomPedro, Iguatemi (senha 1234). Admin: Administrador (senha demo1234).");
               }}
             >
