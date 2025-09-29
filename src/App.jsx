@@ -59,6 +59,9 @@ export default function App() {
   const scannerBuffer = useRef("");
   const scannerTimeout = useRef(null);
 
+  // trava anti-duplicidade
+  const ultimaTransferencia = useRef({ codigoProduto: null, destinatario: null, timestamp: 0 });
+
   // load itens.xls on mount
   useEffect(() => {
     fetch("/itens.xls")
@@ -173,7 +176,7 @@ export default function App() {
       showNotificacao("Selecione o destinatário (a loja que pediu).", "erro");
       return;
     }
-    // vendedor não é mais obrigatório
+    // vendedor não é obrigatório
 
     if (destinatario === usuarioAtual) {
       showNotificacao("Destinatário não pode ser sua própria loja.", "erro");
@@ -202,7 +205,20 @@ export default function App() {
       return;
     }
 
-    // REMOVIDA A VERIFICAÇÃO DE DUPLICIDADE
+    // Anti-duplicidade: impede repetição em menos de 500ms
+    const agora = Date.now();
+    if (
+      ultimaTransferencia.current.codigoProduto === encontrado.codigoProduto &&
+      ultimaTransferencia.current.destinatario === destinatario &&
+      agora - ultimaTransferencia.current.timestamp < 500
+    ) {
+      return; // ignora chamada duplicada
+    }
+    ultimaTransferencia.current = {
+      codigoProduto: encontrado.codigoProduto,
+      destinatario,
+      timestamp: agora,
+    };
 
     // criar pedido: destinatario = loja que pediu (vai ver na aba dela)
     const novoPedido = {
@@ -374,7 +390,7 @@ export default function App() {
             <h3>Registrar / Bipar Item</h3>
 
             <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 12 }}>
-              <label style={{ fontWeight: 700 }}>Destinatário (quem pediu):</label>
+              <label style={{ fontWeight: 700 }}>Destinatário:</label>
               <select value={destinatario} onChange={(e) => setDestinatario(e.target.value)} className="erpf-select">
                 <option value="">-- selecione --</option>
                 {LOJAS.filter((l) => l !== usuarioAtual).map((l) => <option key={l} value={l}>{l}</option>)}
@@ -410,9 +426,8 @@ export default function App() {
                   <div className="grid-card" key={p.id}>
                     <div className="grid-card-title">{p.descricao}</div>
                     <div className="grid-card-sub">Ref: {p.referencia}</div>
-                    <div className="grid-card-sub">Cód: {p.codigoBarra}</div>
-                    <div className="grid-card-sub">Vendedor: {p.vendedor}</div>
-                    <div className="grid-card-sub small">Registrado por: {p.origem} • {new Date(p.data).toLocaleString()}</div>
+                    <div className="grid-card-sub">Quem Pediu: {p.vendedor}</div>
+                    <div className="grid-card-sub small">De: {p.origem} • {new Date(p.data).toLocaleString()}</div>
                     <div style={{ marginTop: 6 }}><Barcode value={String(p.codigoBarra)} height={40} width={1.4} /></div>
                   </div>
                 ))}
