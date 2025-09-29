@@ -20,21 +20,14 @@ const SENHA_PADRAO = "1234";
 const SENHA_ADMIN = "demo1234";
 const LOJAS = ["NovoShopping", "RibeiraoShopping", "DomPedro", "Iguatemi"];
 const LS_PEDIDOS_KEY = "pedidosERP_v1";
-const LOGO_URL = "/logo.jpeg"; // ajuste se necessário
+const LOGO_URL = "/logo.jpeg";
 
 export default function App() {
-  // Auth
   const [logado, setLogado] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [usuarioAtual, setUsuarioAtual] = useState(null);
-
-  // UI / tabs
-  const [abaAtiva, setAbaAtiva] = useState("transferencia"); // transferencia | pedidos | admin
-
-  // itens carregados do xls
+  const [abaAtiva, setAbaAtiva] = useState("transferencia");
   const [catalogo, setCatalogo] = useState([]);
-
-  // pedidos armazenados (array)
   const [pedidos, setPedidos] = useState(() => {
     try {
       const raw = localStorage.getItem(LS_PEDIDOS_KEY);
@@ -44,26 +37,26 @@ export default function App() {
     }
   });
 
-  // transferencia inputs
-  const [destinatario, setDestinatario] = useState(LOJAS[0]);
+  // Transferência inputs
+  // Para admin: precisa de remetente, para loja normal não
+  const [remetente, setRemetente] = useState(LOJAS[0]);
+  const [destinatario, setDestinatario] = useState(LOJAS[1]);
   const [vendedor, setVendedor] = useState("");
   const [manualCodigo, setManualCodigo] = useState("");
-
-  // admin view select
+  // Admin view select
   const [lojaSelecionada, setLojaSelecionada] = useState(LOJAS[0]);
-
-  // notificacao {msg, tipo: 'sucesso'|'erro'} ou null
+  // Notificação
   const [notificacao, setNotificacao] = useState(null);
 
-  // scanner buffer refs
+  // Scanner buffer refs
   const scannerBuffer = useRef("");
   const scannerTimeout = useRef(null);
-  const ultimaTransferencia = useRef({ codigoProduto: null, destinatario: null, timestamp: 0 });
+  const ultimaTransferencia = useRef({ codigoProduto: null, destinatario: null, remetente: null, timestamp: 0 });
 
-  // modal de histórico de enviados
+  // Modal de histórico de enviados
   const [showHistorico, setShowHistorico] = useState(false);
 
-  // load itens.xls on mount
+  // Load itens.xls on mount
   useEffect(() => {
     fetch("/itens.xls")
       .then((res) => res.arrayBuffer())
@@ -72,7 +65,6 @@ export default function App() {
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
         const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
-
         const list = rows.map((row, idx) => {
           const codigoProduto = String(row["Código Produto"] ?? "").trim();
           const cbRaw = String(row["Códigos de Barras"] ?? "");
@@ -84,7 +76,6 @@ export default function App() {
           const codigoBarra = codigosBarras.length > 0 ? [...codigosBarras].sort((a, b) => b.length - a.length)[0] : codigoProduto;
           const descricao = String(row["Descrição Completa"] ?? "Sem descrição").trim();
           const referencia = String(row["Referência"] ?? "").trim();
-
           return {
             id: `${codigoProduto}-${idx}`,
             codigoProduto,
@@ -139,7 +130,7 @@ export default function App() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [catalogo, destinatario, vendedor, usuarioAtual, pedidos]);
+  }, [catalogo, destinatario, remetente, vendedor, usuarioAtual, pedidos]);
 
   const onManualKeyDown = (e) => {
     if (e.key === "Enter") {
@@ -151,6 +142,7 @@ export default function App() {
     }
   };
 
+  // Para admin: requer remetente, para loja: é sempre a loja logada
   const processarCodigo = (valorOriginal) => {
     const valor = String(valorOriginal || "").replace(/[^\w\d]/g, "").trim().toLowerCase();
     if (!valor) return;
@@ -158,12 +150,14 @@ export default function App() {
       showNotificacao("Faça login primeiro.", "erro");
       return;
     }
-    if (!destinatario) {
-      showNotificacao("Selecione o destinatário (a loja que pediu).", "erro");
+    // ADMIN: requer remetente e destinatario. Loja: só destinatario.
+    const remetenteValidado = isAdmin && usuarioAtual === 'Administrador' ? remetente : usuarioAtual;
+    if (!remetenteValidado || !destinatario) {
+      showNotificacao("Selecione o remetente e destinatário.", "erro");
       return;
     }
-    if (destinatario === usuarioAtual) {
-      showNotificacao("Destinatário não pode ser sua própria loja.", "erro");
+    if (remetenteValidado === destinatario) {
+      showNotificacao("Remetente e destinatário não podem ser a mesma loja.", "erro");
       return;
     }
 
@@ -191,6 +185,7 @@ export default function App() {
     if (
       ultimaTransferencia.current.codigoProduto === encontrado.codigoProduto &&
       ultimaTransferencia.current.destinatario === destinatario &&
+      ultimaTransferencia.current.remetente === remetenteValidado &&
       agora - ultimaTransferencia.current.timestamp < 500
     ) {
       return;
@@ -198,6 +193,7 @@ export default function App() {
     ultimaTransferencia.current = {
       codigoProduto: encontrado.codigoProduto,
       destinatario,
+      remetente: remetenteValidado,
       timestamp: agora,
     };
 
@@ -212,13 +208,14 @@ export default function App() {
       descricao: encontrado.descricao,
       referencia: encontrado.referencia,
       destinatario,
-      origem: usuarioAtual,
+      remetente: remetenteValidado,
+      origem: remetenteValidado,
       vendedor: "",
       data: new Date().toISOString(),
     };
 
     setPedidos((old) => [novoPedido, ...old]);
-    showNotificacao(`Item transferido p/ ${destinatario} — ${encontrado.descricao}`, "sucesso");
+    showNotificacao(`Item transferido de ${remetenteValidado} p/ ${destinatario} — ${encontrado.descricao}`, "sucesso");
   };
 
   const showNotificacao = (msg, tipo = "sucesso") => {
@@ -241,8 +238,14 @@ export default function App() {
     setIsAdmin(!!acc.isAdmin);
     setLogado(true);
 
-    const firstOther = LOJAS.find((l) => l !== acc.usuario);
-    setDestinatario(firstOther || "");
+    // Para admin: padrão é primeiro da lista, destinatario é o próximo
+    if (acc.isAdmin) {
+      setRemetente(LOJAS[0]);
+      setDestinatario(LOJAS[1]);
+    } else {
+      const firstOther = LOJAS.find((l) => l !== acc.usuario);
+      setDestinatario(firstOther || "");
+    }
   };
 
   const handleLogout = () => {
@@ -252,6 +255,8 @@ export default function App() {
     setAbaAtiva("transferencia");
     setVendedor("");
     setManualCodigo("");
+    setRemetente(LOJAS[0]);
+    setDestinatario(LOJAS[1]);
   };
 
   // admin: delete individual pedido
@@ -262,11 +267,12 @@ export default function App() {
 
   // pedidos que deverão aparecer na aba "Itens Pedidos" da loja logada:
   const pedidosParaMinhaLoja = pedidos.filter((p) => p.destinatario === usuarioAtual);
+
   // pedidos enviados por loja (admin view)
-  const pedidosEnviadosPorLoja = (loja) => pedidos.filter((p) => p.origem === loja);
+  const pedidosEnviadosPorLoja = (loja) => pedidos.filter((p) => p.remetente === loja);
 
   // Histórico de enviados por essa loja
-  const historicoEnviados = pedidos.filter((p) => p.origem === usuarioAtual);
+  const historicoEnviados = pedidos.filter((p) => p.remetente === usuarioAtual);
 
   // Excluir do histórico
   const excluirEnviado = (id) => {
@@ -280,7 +286,6 @@ export default function App() {
         <div className="login-card">
           <img src={LOGO_URL} alt="logo" className="login-logo" />
           <h1 className="login-title">Transferência de Produtos</h1>
-
           <div className="login-row">
             <select id="loginSelect" defaultValue={ACCOUNTS[0].usuario} className="login-select" onChange={(e) => setUsuarioAtual(e.target.value)}>
               {ACCOUNTS.map((a) => (
@@ -290,7 +295,6 @@ export default function App() {
               ))}
             </select>
           </div>
-
           <div className="login-row">
             <input
               type="password"
@@ -306,7 +310,6 @@ export default function App() {
               }}
             />
           </div>
-
           <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
             <button
               className="btn primary"
@@ -327,7 +330,6 @@ export default function App() {
               Ajuda
             </button>
           </div>
-
           {notificacao && (
             <div className={`notif ${notificacao.tipo}`}>
               {notificacao.msg}
@@ -353,6 +355,26 @@ export default function App() {
           <button className="btn danger" onClick={handleLogout} style={{ zIndex: 1 }}>
             Sair
           </button>
+          {/* Só mostra o ícone de ? para LOJA, não para admin */}
+          {(!isAdmin || usuarioAtual !== "Administrador") && (
+            <button
+              title="Histórico de itens enviados"
+              style={{
+                background: "none",
+                border: "none",
+                padding: 0,
+                marginTop: 4,
+                cursor: "pointer",
+                fontSize: 18,
+                color: "#555",
+                width: 22,
+                height: 22,
+              }}
+              onClick={() => setShowHistorico(true)}
+            >
+              <span aria-label="Histórico" style={{ fontSize: "1em" }}>❓</span>
+            </button>
+          )}
         </div>
       </header>
 
@@ -363,14 +385,25 @@ export default function App() {
       </nav>
 
       <main className="erp-main">
+        {/* Transferência: admin tem Remetente, loja não */}
         {abaAtiva === "transferencia" && (
           <section className="card">
             <h3>Registrar / Bipar Item</h3>
             <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 12 }}>
+              {/* Só mostra remetente para admin */}
+              {isAdmin && usuarioAtual === "Administrador" && (
+                <>
+                  <label style={{ fontWeight: 700 }}>Remetente (quem envia):</label>
+                  <select value={remetente} onChange={(e) => setRemetente(e.target.value)} className="erpf-select">
+                    <option value="">-- selecione --</option>
+                    {LOJAS.map((l) => <option key={l} value={l}>{l}</option>)}
+                  </select>
+                </>
+              )}
               <label style={{ fontWeight: 700 }}>Destinatário (quem pediu):</label>
               <select value={destinatario} onChange={(e) => setDestinatario(e.target.value)} className="erpf-select">
                 <option value="">-- selecione --</option>
-                {LOJAS.filter((l) => l !== usuarioAtual).map((l) => <option key={l} value={l}>{l}</option>)}
+                {LOJAS.filter((l) => (isAdmin && usuarioAtual === "Administrador" ? l !== remetente : l !== usuarioAtual)).map((l) => <option key={l} value={l}>{l}</option>)}
               </select>
               <label style={{ fontWeight: 700 }}>Vendedor:</label>
               <input value={vendedor} onChange={(e) => setVendedor(e.target.value)} className="erpf-input" placeholder="Nome do vendedor" />
@@ -403,7 +436,7 @@ export default function App() {
                     <div className="grid-card-sub">Ref: {p.referencia}</div>
                     <div className="grid-card-sub">Cód: {p.codigoBarra}</div>
                     <div className="grid-card-sub">Vendedor: {p.vendedor}</div>
-                    <div className="grid-card-sub small">Registrado por: {p.origem} • {new Date(p.data).toLocaleString()}</div>
+                    <div className="grid-card-sub small">Remetente: {p.remetente} • {new Date(p.data).toLocaleString()}</div>
                     <div style={{ marginTop: 6 }}><Barcode value={String(p.codigoBarra)} height={40} width={1.4} /></div>
                   </div>
                 ))}
@@ -449,7 +482,89 @@ export default function App() {
         )}
       </main>
 
-      {/* notificacao bottom-right */}
+      {/* Modal Histórico de enviados com scroll */}
+      {showHistorico && (
+        <div
+          style={{
+            position: "fixed",
+            left: 0,
+            top: 0,
+            width: "100vw",
+            height: "100vh",
+            background: "rgba(0,0,0,0.15)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center"
+          }}
+          onClick={() => setShowHistorico(false)}
+        >
+          <div
+            style={{
+              background: "white",
+              borderRadius: 8,
+              padding: 24,
+              minWidth: 320,
+              maxWidth: 440,
+              maxHeight: "80vh",
+              boxShadow: "0 2px 14px rgba(0,0,0,0.18)",
+              position: "relative",
+              display: "flex",
+              flexDirection: "column"
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 10 }}>Histórico de itens enviados</div>
+            <div style={{
+              flex: 1,
+              overflowY: "auto",
+              maxHeight: "52vh",
+              marginBottom: 8
+            }}>
+              {historicoEnviados.length === 0 ? (
+                <div style={{ color: "#666" }}>Nenhum item enviado por esta loja.</div>
+              ) : (
+                <div>
+                  {historicoEnviados.map(p => (
+                    <div key={p.id} style={{
+                      border: "1px solid #eee",
+                      borderRadius: 5,
+                      padding: 10,
+                      marginBottom: 12,
+                      fontSize: 15,
+                      background: "#f7fbff",
+                      position: "relative"
+                    }}>
+                      <div style={{ fontWeight: 600 }}>{p.descricao}</div>
+                      <div style={{ fontSize: 13 }}>Ref: {p.referencia}</div>
+                      <div style={{ fontSize: 13 }}>Cód: {p.codigoBarra}</div>
+                      <div style={{ fontSize: 12, color: "#888" }}>Destinatário: {p.destinatario}</div>
+                      <div style={{ fontSize: 12, color: "#888" }}>Data: {new Date(p.data).toLocaleString()}</div>
+                      <div style={{ marginTop: 3 }}>
+                        <Barcode value={String(p.codigoBarra)} height={28} width={1.2} fontSize={11} />
+                      </div>
+                      <button
+                        className="btn danger"
+                        style={{ position: "absolute", right: 10, top: 10, fontSize: 12, padding: "2px 7px" }}
+                        onClick={() => excluirEnviado(p.id)}
+                      >
+                        Excluir
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button
+              className="btn"
+              style={{ marginTop: 10, width: "100%" }}
+              onClick={() => setShowHistorico(false)}
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
       {notificacao && (
         <div className={`toast ${notificacao.tipo}`}>
           {notificacao.msg}
