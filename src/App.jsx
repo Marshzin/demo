@@ -25,7 +25,7 @@ export default function App() {
   const [produtos, setProdutos] = useState([]);
   const [pedidos, setPedidos] = useState([]);
   const [lojaSelecionada, setLojaSelecionada] = useState(lojas[0]);
-  const [notificacao, setNotificacao] = useState(null);
+  const [notificacao, setNotificacao] = useState("");
 
   useEffect(() => {
     fetch("/itens.xls")
@@ -44,29 +44,24 @@ export default function App() {
       setLogado(true);
       setIsAdmin(user.isAdmin);
     } else {
-      setNotificacao({ mensagem: "Usuário ou senha incorretos", tipo: "erro" });
-      setTimeout(() => setNotificacao(null), 3000);
+      alert("Usuário ou senha incorretos");
     }
   };
 
   const handleBip = (e) => {
     if (e.key === "Enter" && codigoBarras.trim() !== "") {
       if (!destinatario) {
-        setNotificacao({ mensagem: "Selecione o destinatário!", tipo: "erro" });
-        setTimeout(() => setNotificacao(null), 3000);
+        alert("Selecione o destinatário!");
         return;
       }
       if (!vendedor.trim()) {
-        setNotificacao({ mensagem: "Informe o vendedor!", tipo: "erro" });
-        setTimeout(() => setNotificacao(null), 3000);
+        alert("Informe o vendedor!");
         return;
       }
-
       const produto = produtos.find(
         (p) =>
           String(p["Códigos de Barras"]).trim() === codigoBarras.trim()
       );
-
       if (produto) {
         const novoPedido = {
           id: Date.now(),
@@ -78,17 +73,10 @@ export default function App() {
         };
         setPedidos((old) => [...old, novoPedido]);
         setCodigoBarras("");
-        setNotificacao({
-          mensagem: `Item transferido com sucesso para ${destinatario}`,
-          tipo: "sucesso",
-        });
-        setTimeout(() => setNotificacao(null), 3000);
+        setNotificacao(`Item transferido com sucesso para ${destinatario}`);
+        setTimeout(() => setNotificacao(""), 3000);
       } else {
-        setNotificacao({
-          mensagem: "Produto não encontrado no cadastro!",
-          tipo: "erro",
-        });
-        setTimeout(() => setNotificacao(null), 3000);
+        alert("Produto não encontrado no cadastro!");
       }
     }
   };
@@ -119,18 +107,6 @@ export default function App() {
         <button onClick={handleLogin} style={styles.button}>
           Entrar
         </button>
-
-        {notificacao && (
-          <div
-            style={{
-              ...styles.notificacao,
-              background:
-                notificacao.tipo === "sucesso" ? "#2ecc71" : "#e74c3c",
-            }}
-          >
-            {notificacao.mensagem}
-          </div>
-        )}
       </div>
     );
   }
@@ -252,14 +228,8 @@ export default function App() {
       )}
 
       {notificacao && (
-        <div
-          style={{
-            ...styles.notificacao,
-            background:
-              notificacao.tipo === "sucesso" ? "#2ecc71" : "#e74c3c",
-          }}
-        >
-          {notificacao.mensagem}
+        <div style={styles.notificacao}>
+          {notificacao}
         </div>
       )}
     </div>
@@ -311,6 +281,7 @@ const styles = {
     position: "fixed",
     top: 20,
     right: 20,
+    background: "#2ecc71",
     color: "#fff",
     padding: "12px 20px",
     borderRadius: 8,
