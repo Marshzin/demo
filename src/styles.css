@@ -1,29 +1,101 @@
-
-
-@keyframes fadeinout {
-  0% { opacity: 0; transform: translateY(-10px); }
-  10% { opacity: 1; transform: translateY(0); }
-  90% { opacity: 1; transform: translateY(0); }
-  100% { opacity: 0; transform: translateY(-10px); }
+/* ERP professional look + toast animation bottom-right */
+:root {
+  --blue: #0F3D57;
+  --accent: #4a90e2;
+  --muted: #f5f7fa;
 }
 
-.popup {
+/* layout root */
+.erp-root {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #eef4fa 0%, #ffffff 100%);
+  font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+/* login card */
+.login-card {
+  width: 420px;
+  margin: 70px auto;
+  background: #fff;
+  border-radius: 12px;
+  padding: 28px;
+  box-shadow: 0 10px 30px rgba(15,61,87,0.08);
+  text-align: center;
+}
+.login-logo { width: 110px; margin-bottom: 10px; }
+.login-title { margin: 8px 0 18px 0; color: var(--blue); font-size: 20px; }
+
+/* header */
+.erp-header {
+  background: var(--blue);
+  color: #fff;
+  padding: 14px 20px;
+  border-radius: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 6px 18px rgba(15,61,87,0.12);
+}
+.erp-left { display:flex; align-items:center; gap:12px; }
+.erp-logo { width: 76px; border-radius: 6px; }
+.erp-title { font-weight: 700; font-size: 18px; }
+.erp-sub { font-size: 13px; opacity: 0.9; }
+.erp-right { display:flex; align-items:center; gap:10px; }
+.erp-user { font-weight:600; }
+
+/* buttons & inputs */
+.btn { padding: 8px 12px; border-radius: 8px; border: none; cursor: pointer; background: #eee; color: #111; }
+.btn.primary { background: var(--accent); color: #fff; }
+.btn.danger { background: #e74c3c; color: #fff; }
+.login-select, .login-input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #e0e6ef; box-sizing: border-box; }
+.login-row { margin-bottom: 10px; }
+
+/* tabs */
+.erp-tabs { display:flex; gap:10px; margin:18px 0; }
+.tab { padding: 8px 14px; border-radius: 8px; background: #f0f4fb; border: none; cursor: pointer; font-weight:600; color:#234; }
+.tab.active { background: #fff; box-shadow: 0 4px 10px rgba(15,61,87,0.06); border-bottom: 3px solid var(--accent); color: var(--blue); }
+
+/* main card */
+.erp-main { margin-top: 10px; }
+.card { background: #fff; padding: 18px; border-radius: 10px; box-shadow: 0 6px 18px rgba(15,61,87,0.04); margin-bottom: 18px; }
+
+/* transfer inputs */
+.erpf-select, .erpf-input { padding: 10px 12px; border-radius: 8px; border: 1px solid #e5eef8; }
+.erpf-input.large { width: 100%; padding: 12px; font-size: 15px; }
+
+/* grid cards */
+.grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(240px,1fr)); gap: 16px; }
+.grid-card { background: #fff; border-radius: 8px; padding: 12px; border: 1px solid #eef3f8; box-shadow: 0 6px 18px rgba(15,61,87,0.03); display:flex; flex-direction:column; align-items:center; }
+.grid-card-title { font-weight:700; margin-bottom:8px; color: var(--blue); text-align:center; }
+.grid-card-sub { color:#556; font-size:13px; }
+
+/* toast bottom-right animated */
+@keyframes toast-in-out {
+  0% { transform: translateY(10px); opacity: 0; }
+  10% { transform: translateY(0); opacity: 1; }
+  90% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(10px); opacity: 0; }
+}
+
+.toast {
   position: fixed;
-  top: 20px;
   right: 20px;
+  bottom: 20px;
+  padding: 12px 18px;
+  border-radius: 10px;
   color: white;
-  padding: 12px 20px;
-  border-radius: 8px;
-  font-weight: bold;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-  animation: fadeinout 3s ease forwards;
-  z-index: 1000;
+  font-weight: 700;
+  z-index: 4000;
+  box-shadow: 0 10px 28px rgba(12, 36, 70, 0.18);
+  animation: toast-in-out 3.2s ease forwards;
+  min-width: 220px;
 }
 
-.popup.sucesso {
-  background: #2ecc71;
-}
+.toast.sucesso { background: #2ecc71; }
+.toast.erro { background: #e74c3c; }
 
-.popup.erro {
-  background: #e74c3c;
-}
+/* small helpers */
+.erpf-input[placeholder] { color: #333; }
