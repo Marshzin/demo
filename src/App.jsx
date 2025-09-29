@@ -62,6 +62,9 @@ export default function App() {
   // trava anti-duplicidade
   const ultimaTransferencia = useRef({ codigoProduto: null, destinatario: null, timestamp: 0 });
 
+  // modal de histórico de enviados
+  const [showHistorico, setShowHistorico] = useState(false);
+
   // load itens.xls on mount
   useEffect(() => {
     fetch("/itens.xls")
@@ -176,14 +179,11 @@ export default function App() {
       showNotificacao("Selecione o destinatário (a loja que pediu).", "erro");
       return;
     }
-    // vendedor não é obrigatório
-
     if (destinatario === usuarioAtual) {
       showNotificacao("Destinatário não pode ser sua própria loja.", "erro");
       return;
     }
 
-    // lookup: codigoProduto, codigoBarra principal, any codigosBarras, referencia
     let encontrado = catalogo.find((it) => {
       if (!it) return false;
       if ((it.codigoProduto || "").toLowerCase() === valor) return true;
@@ -195,7 +195,6 @@ export default function App() {
       return false;
     });
 
-    // try partial match by ending (some scanners trim leading zeros)
     if (!encontrado) {
       encontrado = catalogo.find((it) => it.codigosBarras && it.codigosBarras.some((cb) => cb.toLowerCase().endsWith(valor)));
     }
@@ -220,6 +219,9 @@ export default function App() {
       timestamp: agora,
     };
 
+    // Limpa vendedor ao enviar
+    setVendedor("");
+
     // criar pedido: destinatario = loja que pediu (vai ver na aba dela)
     const novoPedido = {
       id: Date.now().toString() + "-" + Math.random().toString(36).slice(2, 9),
@@ -229,9 +231,9 @@ export default function App() {
       codigosBarras: encontrado.codigosBarras,
       descricao: encontrado.descricao,
       referencia: encontrado.referencia,
-      destinatario, // who asked
-      origem: usuarioAtual, // who scanned (receiving store)
-      vendedor: vendedor.trim(),
+      destinatario,
+      origem: usuarioAtual,
+      vendedor: "", // Apaga vendedor!
       data: new Date().toISOString(),
     };
 
@@ -293,7 +295,15 @@ export default function App() {
   // pedidos feitos pela loja X? In admin we will show pedidos where 'origem' === loja (if you want). 
   const pedidosFeitosPorLoja = (loja) => pedidos.filter((p) => p.origem === loja);
 
-  // UI: login screen
+  // Histórico de enviados por essa loja
+  const historicoEnviados = pedidos.filter((p) => p.origem === usuarioAtual);
+
+  // Excluir do histórico
+  const excluirEnviado = (id) => {
+    if (!window.confirm("Excluir este item do seu histórico?")) return;
+    setPedidos((old) => old.filter((p) => p.id !== id));
+  };
+
   if (!logado) {
     return (
       <div className="erp-root">
@@ -358,7 +368,6 @@ export default function App() {
     );
   }
 
-  // MAIN ERP PANEL
   return (
     <div className="erp-root">
       <header className="erp-header">
@@ -369,11 +378,28 @@ export default function App() {
             <div className="erp-sub">Painel de Transferência</div>
           </div>
         </div>
-
-        <div className="erp-right">
+        <div className="erp-right" style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "end" }}>
           <div className="erp-user">{usuarioAtual}</div>
-          <button className="btn danger" onClick={handleLogout}>
+          <button className="btn danger" onClick={handleLogout} style={{ zIndex: 1 }}>
             Sair
+          </button>
+          {/* Ícone de interrogação abaixo de "Sair" */}
+          <button
+            title="Histórico de itens enviados"
+            style={{
+              background: "none",
+              border: "none",
+              padding: 0,
+              marginTop: 4,
+              cursor: "pointer",
+              fontSize: 18,
+              color: "#555",
+              width: 22,
+              height: 22,
+            }}
+            onClick={() => setShowHistorico(true)}
+          >
+            <span aria-label="Histórico" style={{ fontSize: "1em" }}>❓</span>
           </button>
         </div>
       </header>
@@ -390,7 +416,7 @@ export default function App() {
             <h3>Registrar / Bipar Item</h3>
 
             <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 12 }}>
-              <label style={{ fontWeight: 700 }}>Destinatário:</label>
+              <label style={{ fontWeight: 700 }}>Destinatário (quem pediu):</label>
               <select value={destinatario} onChange={(e) => setDestinatario(e.target.value)} className="erpf-select">
                 <option value="">-- selecione --</option>
                 {LOJAS.filter((l) => l !== usuarioAtual).map((l) => <option key={l} value={l}>{l}</option>)}
@@ -426,8 +452,9 @@ export default function App() {
                   <div className="grid-card" key={p.id}>
                     <div className="grid-card-title">{p.descricao}</div>
                     <div className="grid-card-sub">Ref: {p.referencia}</div>
-                    <div className="grid-card-sub">Quem Pediu: {p.vendedor}</div>
-                    <div className="grid-card-sub small">De: {p.origem} • {new Date(p.data).toLocaleString()}</div>
+                    <div className="grid-card-sub">Cód: {p.codigoBarra}</div>
+                    <div className="grid-card-sub">Vendedor: {p.vendedor}</div>
+                    <div className="grid-card-sub small">Registrado por: {p.origem} • {new Date(p.data).toLocaleString()}</div>
                     <div style={{ marginTop: 6 }}><Barcode value={String(p.codigoBarra)} height={40} width={1.4} /></div>
                   </div>
                 ))}
@@ -474,6 +501,80 @@ export default function App() {
           </section>
         )}
       </main>
+
+      {/* Modal Histórico de enviados */}
+      {showHistorico && (
+        <div
+          style={{
+            position: "fixed",
+            left: 0,
+            top: 0,
+            width: "100vw",
+            height: "100vh",
+            background: "rgba(0,0,0,0.15)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center"
+          }}
+          onClick={() => setShowHistorico(false)}
+        >
+          <div
+            style={{
+              background: "white",
+              borderRadius: 8,
+              padding: 24,
+              minWidth: 320,
+              maxWidth: 440,
+              boxShadow: "0 2px 14px rgba(0,0,0,0.18)",
+              position: "relative"
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 10 }}>Histórico de itens enviados</div>
+            {historicoEnviados.length === 0 ? (
+              <div style={{ color: "#666" }}>Nenhum item enviado por esta loja.</div>
+            ) : (
+              <div>
+                {historicoEnviados.map(p => (
+                  <div key={p.id} style={{
+                    border: "1px solid #eee",
+                    borderRadius: 5,
+                    padding: 10,
+                    marginBottom: 12,
+                    fontSize: 15,
+                    background: "#f7fbff",
+                    position: "relative"
+                  }}>
+                    <div style={{ fontWeight: 600 }}>{p.descricao}</div>
+                    <div style={{ fontSize: 13 }}>Ref: {p.referencia}</div>
+                    <div style={{ fontSize: 13 }}>Cód: {p.codigoBarra}</div>
+                    <div style={{ fontSize: 12, color: "#888" }}>Destinatário: {p.destinatario}</div>
+                    <div style={{ fontSize: 12, color: "#888" }}>Data: {new Date(p.data).toLocaleString()}</div>
+                    <div style={{ marginTop: 3 }}>
+                      <Barcode value={String(p.codigoBarra)} height={28} width={1.2} fontSize={11} />
+                    </div>
+                    <button
+                      className="btn danger"
+                      style={{ position: "absolute", right: 10, top: 10, fontSize: 12, padding: "2px 7px" }}
+                      onClick={() => excluirEnviado(p.id)}
+                    >
+                      Excluir
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button
+              className="btn"
+              style={{ marginTop: 10, width: "100%" }}
+              onClick={() => setShowHistorico(false)}
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* notificacao bottom-right */}
       {notificacao && (
