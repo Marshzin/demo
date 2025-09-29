@@ -275,7 +275,10 @@ export default function App() {
   const pedidosParaMinhaLoja = pedidos.filter((p) => p.destinatario === usuarioAtual);
 
   // pedidos enviados por loja (admin view)
-  const pedidosEnviadosPorLoja = (loja) => pedidos.filter((p) => p.remetente === loja);
+  // const pedidosEnviadosPorLoja = (loja) => pedidos.filter((p) => p.remetente === loja);
+
+  // Histórico de transferências recebidas por loja (admin view)
+  const historicoLojaAdmin = (loja) => pedidos.filter((p) => p.destinatario === loja);
 
   // Histórico de enviados por essa loja
   const historicoEnviados = pedidos.filter((p) => p.remetente === usuarioAtual);
@@ -462,23 +465,24 @@ export default function App() {
           <section className="card">
             <h3>Administração</h3>
             <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
-              <label style={{ fontWeight: 700 }}>Ver pedidos enviados por:</label>
+              <label style={{ fontWeight: 700 }}>Ver histórico da loja:</label>
               <select value={lojaSelecionada} onChange={(e) => setLojaSelecionada(e.target.value)} className="erpf-select">
                 {LOJAS.map((l) => <option key={l} value={l}>{l}</option>)}
               </select>
             </div>
             <div>
-              {pedidosEnviadosPorLoja(lojaSelecionada).length === 0 ? (
-                <p style={{ color: "#666" }}>Nenhum pedido enviado por {lojaSelecionada}.</p>
+              {historicoLojaAdmin(lojaSelecionada).length === 0 ? (
+                <p style={{ color: "#666" }}>Nenhum item transferido para {lojaSelecionada}.</p>
               ) : (
                 <div className="grid">
-                  {pedidosEnviadosPorLoja(lojaSelecionada).map((p) => (
+                  {historicoLojaAdmin(lojaSelecionada).map((p) => (
                     <div className="grid-card" key={p.id}>
                       <div className="grid-card-title">{p.descricao}</div>
                       <div className="grid-card-sub">Ref: {p.referencia}</div>
                       <div className="grid-card-sub">Cód: {p.codigoBarra}</div>
-                      <div className="grid-card-sub">Destinatário: {p.destinatario}</div>
-                      <div className="grid-card-sub small">Vendedor: {p.vendedor} • {new Date(p.data).toLocaleString()}</div>
+                      <div className="grid-card-sub">Remetente: {p.remetente}</div>
+                      <div className="grid-card-sub">Solicitante: {p.vendedor}</div>
+                      <div className="grid-card-sub small">Data: {new Date(p.data).toLocaleString()}</div>
                       <div style={{ marginTop: 8 }}>
                         <Barcode value={String(p.codigoBarra)} height={40} width={1.4} />
                       </div>
