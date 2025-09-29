@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import Barcode from "react-barcode";
-import "./styles.css";
+import "./styles.css"; // Certifique-se de ter o arquivo de estilo correto aqui
 
 /*
   Usuarios / lojas:
@@ -212,8 +212,7 @@ export default function App() {
       codigosBarras: encontrado.codigosBarras,
       descricao: encontrado.descricao,
       referencia: encontrado.referencia,
-      destinatario, // who asked
-      origem: usuarioAtual, // who scanned
+      destinatario,
       vendedor: vendedor.trim() || "Não informado", // not required anymore
       data: new Date().toISOString(),
     };
@@ -247,18 +246,19 @@ export default function App() {
   return (
     <div className="App">
       <header>
+        <img src={LOGO_URL} alt="Logo" className="logo" />
         <h1>Sistema de Transferências de Estoque</h1>
       </header>
       {logado ? (
         <>
-          <nav>
+          <nav className="nav">
             <button onClick={() => setAbaAtiva("transferencia")}>Transferência</button>
             <button onClick={() => setAbaAtiva("pedidos")}>Pedidos</button>
             {isAdmin && <button onClick={() => setAbaAtiva("admin")}>Admin</button>}
           </nav>
 
           {abaAtiva === "transferencia" && (
-            <div>
+            <div className="transferencia">
               <h2>Transferir Produto</h2>
               <div>
                 <label>
@@ -303,7 +303,7 @@ export default function App() {
           )}
 
           {abaAtiva === "pedidos" && (
-            <div>
+            <div className="pedidos">
               <h2>Pedidos Realizados</h2>
               <ul>
                 {pedidos.map((pedido, idx) => (
@@ -316,7 +316,7 @@ export default function App() {
           )}
 
           {abaAtiva === "admin" && isAdmin && (
-            <div>
+            <div className="admin">
               <h2>Admin: Gerenciar Pedidos</h2>
               <label>
                 Selecione uma loja:
@@ -348,7 +348,7 @@ export default function App() {
           )}
         </>
       ) : (
-        <div>
+        <div className="login">
           <h2>Faça login</h2>
           <div>
             <label>
