@@ -416,7 +416,7 @@ export default function App() {
                 <option value="">-- selecione --</option>
                 {LOJAS.filter((l) => (isAdmin && usuarioAtual === "Administrador" ? l !== remetente : l !== usuarioAtual)).map((l) => <option key={l} value={l}>{l}</option>)}
               </select>
-              <label style={{ fontWeight: 700 }}>Vendedor:</label>
+              <label style={{ fontWeight: 700 }}>Solicitante:</label>
               <input value={vendedor} onChange={(e) => setVendedor(e.target.value)} className="erpf-input" placeholder="Nome do vendedor" />
             </div>
             <div style={{ marginTop: 8 }}>
