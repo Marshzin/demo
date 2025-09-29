@@ -404,14 +404,14 @@ export default function App() {
               {/* Só mostra remetente para admin */}
               {isAdmin && usuarioAtual === "Administrador" && (
                 <>
-                  <label style={{ fontWeight: 700 }}>Remetente (quem envia):</label>
+                  <label style={{ fontWeight: 700 }}>Remetente:</label>
                   <select value={remetente} onChange={(e) => setRemetente(e.target.value)} className="erpf-select">
                     <option value="">-- selecione --</option>
                     {LOJAS.map((l) => <option key={l} value={l}>{l}</option>)}
                   </select>
                 </>
               )}
-              <label style={{ fontWeight: 700 }}>Destinatário (quem pediu):</label>
+              <label style={{ fontWeight: 700 }}>Destinatário:</label>
               <select value={destinatario} onChange={(e) => setDestinatario(e.target.value)} className="erpf-select">
                 <option value="">-- selecione --</option>
                 {LOJAS.filter((l) => (isAdmin && usuarioAtual === "Administrador" ? l !== remetente : l !== usuarioAtual)).map((l) => <option key={l} value={l}>{l}</option>)}
