@@ -173,10 +173,8 @@ export default function App() {
       showNotificacao("Selecione o destinatário (a loja que pediu).", "erro");
       return;
     }
-    if (!vendedor || !vendedor.trim()) {
-      showNotificacao("Informe o nome do vendedor.", "erro");
-      return;
-    }
+    // vendedor não é mais obrigatório
+
     if (destinatario === usuarioAtual) {
       showNotificacao("Destinatário não pode ser sua própria loja.", "erro");
       return;
@@ -201,6 +199,19 @@ export default function App() {
 
     if (!encontrado) {
       showNotificacao(`Produto não encontrado: ${valorOriginal}`, "erro");
+      return;
+    }
+
+    // VERIFICA SE JÁ EXISTE UM PEDIDO IGUAL PARA ESSE DESTINATÁRIO E PRODUTO
+    const existePedido = pedidos.some(
+      (p) =>
+        p.codigoProduto === encontrado.codigoProduto &&
+        p.destinatario === destinatario &&
+        p.origem === usuarioAtual
+    );
+
+    if (existePedido) {
+      showNotificacao(`Este item já foi transferido para ${destinatario}.`, "erro");
       return;
     }
 
