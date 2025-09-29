@@ -29,7 +29,7 @@ const SENHAS_LOJAS = {
 
 const LOJAS = ["NovoShopping", "RibeiraoShopping", "DomPedro", "Iguatemi"];
 const LS_PEDIDOS_KEY = "pedidosERP_v1";
-const LOGO_URL = "/logo.jpeg"; // ajuste se necessário
+const LOGO_URL = "/logo.jpeg";
 
 // Restaurar login salvo
 const savedUsuario = localStorage.getItem("erp_usuarioAtual");
@@ -42,7 +42,7 @@ export default function App() {
   const [usuarioAtual, setUsuarioAtual] = useState(savedUsuario || null);
 
   // UI / tabs
-  const [abaAtiva, setAbaAtiva] = useState("transferencia"); // transferencia | pedidos | admin
+  const [abaAtiva, setAbaAtiva] = useState("transferencia");
 
   // itens carregados do xls
   const [catalogo, setCatalogo] = useState([]);
@@ -277,6 +277,7 @@ export default function App() {
     setTimeout(() => setNotificacao(null), 3200);
   };
 
+  // ----------- ATUALIZAÇÃO DO LOGIN ABAIXO -----------
   const handleLogin = (usuario, senha) => {
     const acc = ACCOUNTS.find((a) => a.usuario === usuario);
     if (!acc) {
@@ -300,10 +301,17 @@ export default function App() {
       setRemetente(LOJAS[0]);
       setDestinatario(LOJAS[1]);
     } else {
-      const firstOther = LOJAS.find((l) => l !== acc.usuario);
-      setDestinatario(firstOther || "");
+      // Destinatário padrão por loja
+      const destinatarioPorLoja = {
+        NovoShopping: "RibeiraoShopping",
+        RibeiraoShopping: "NovoShopping",
+        DomPedro: "Iguatemi",
+        Iguatemi: "DomPedro"
+      };
+      setDestinatario(destinatarioPorLoja[acc.usuario] || LOJAS.find((l) => l !== acc.usuario));
     }
   };
+  // ----------- FIM ATUALIZAÇÃO DO LOGIN -----------
 
   const handleLogout = () => {
     setLogado(false);
@@ -533,7 +541,6 @@ export default function App() {
           </section>
         )}
 
-        {/* MODAL de cadastro manual de produto não encontrado */}
         {showProdutoManual && (
           <div
             style={{
@@ -609,7 +616,6 @@ export default function App() {
           </div>
         )}
 
-        {/* Modal Histórico de enviados com scroll */}
         {showHistorico && (
           <div
             style={{
