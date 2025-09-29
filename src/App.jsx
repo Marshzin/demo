@@ -20,14 +20,21 @@ const SENHA_PADRAO = "1234";
 const SENHA_ADMIN = "demo1234";
 const LOJAS = ["NovoShopping", "RibeiraoShopping", "DomPedro", "Iguatemi"];
 const LS_PEDIDOS_KEY = "pedidosERP_v1";
-const LOGO_URL = "/logo.jpeg";
+const LOGO_URL = "/logo.jpeg"; // ajuste se necessário
 
 export default function App() {
+  // Auth
   const [logado, setLogado] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [usuarioAtual, setUsuarioAtual] = useState(null);
-  const [abaAtiva, setAbaAtiva] = useState("transferencia");
+
+  // UI / tabs
+  const [abaAtiva, setAbaAtiva] = useState("transferencia"); // transferencia | pedidos | admin
+
+  // itens carregados do xls
   const [catalogo, setCatalogo] = useState([]);
+
+  // pedidos armazenados (array)
   const [pedidos, setPedidos] = useState(() => {
     try {
       const raw = localStorage.getItem(LS_PEDIDOS_KEY);
@@ -37,26 +44,27 @@ export default function App() {
     }
   });
 
-  // Transferência inputs
-  // Para admin: precisa de remetente, para loja normal não
+  // transferencia inputs
   const [remetente, setRemetente] = useState(LOJAS[0]);
   const [destinatario, setDestinatario] = useState(LOJAS[1]);
   const [vendedor, setVendedor] = useState("");
   const [manualCodigo, setManualCodigo] = useState("");
-  // Admin view select
+
+  // admin view select
   const [lojaSelecionada, setLojaSelecionada] = useState(LOJAS[0]);
-  // Notificação
+
+  // notificacao {msg, tipo: 'sucesso'|'erro'} ou null
   const [notificacao, setNotificacao] = useState(null);
 
-  // Scanner buffer refs
+  // scanner buffer refs
   const scannerBuffer = useRef("");
   const scannerTimeout = useRef(null);
   const ultimaTransferencia = useRef({ codigoProduto: null, destinatario: null, remetente: null, timestamp: 0 });
 
-  // Modal de histórico de enviados
+  // modal de histórico de enviados
   const [showHistorico, setShowHistorico] = useState(false);
 
-  // Load itens.xls on mount
+  // load itens.xls on mount
   useEffect(() => {
     fetch("/itens.xls")
       .then((res) => res.arrayBuffer())
@@ -142,7 +150,6 @@ export default function App() {
     }
   };
 
-  // Para admin: requer remetente, para loja: é sempre a loja logada
   const processarCodigo = (valorOriginal) => {
     const valor = String(valorOriginal || "").replace(/[^\w\d]/g, "").trim().toLowerCase();
     if (!valor) return;
@@ -151,7 +158,7 @@ export default function App() {
       return;
     }
     // ADMIN: requer remetente e destinatario. Loja: só destinatario.
-    const remetenteValidado = isAdmin && usuarioAtual === 'Administrador' ? remetente : usuarioAtual;
+    const remetenteValidado = (isAdmin && usuarioAtual === 'Administrador') ? remetente : usuarioAtual;
     if (!remetenteValidado || !destinatario) {
       showNotificacao("Selecione o remetente e destinatário.", "erro");
       return;
@@ -238,7 +245,6 @@ export default function App() {
     setIsAdmin(!!acc.isAdmin);
     setLogado(true);
 
-    // Para admin: padrão é primeiro da lista, destinatario é o próximo
     if (acc.isAdmin) {
       setRemetente(LOJAS[0]);
       setDestinatario(LOJAS[1]);
@@ -279,6 +285,9 @@ export default function App() {
     if (!window.confirm("Excluir este item do seu histórico?")) return;
     setPedidos((old) => old.filter((p) => p.id !== id));
   };
+
+  // TAB BUTTONS: Remove "Itens Pedidos" for Administrador
+  const showPedidosTab = !(isAdmin && usuarioAtual === "Administrador");
 
   if (!logado) {
     return (
@@ -380,7 +389,9 @@ export default function App() {
 
       <nav className="erp-tabs">
         <button className={abaAtiva === "transferencia" ? "tab active" : "tab"} onClick={() => setAbaAtiva("transferencia")}>Transferência</button>
-        <button className={abaAtiva === "pedidos" ? "tab active" : "tab"} onClick={() => setAbaAtiva("pedidos")}>Itens Pedidos</button>
+        {showPedidosTab && (
+          <button className={abaAtiva === "pedidos" ? "tab active" : "tab"} onClick={() => setAbaAtiva("pedidos")}>Itens Pedidos</button>
+        )}
         {isAdmin && <button className={abaAtiva === "admin" ? "tab active" : "tab"} onClick={() => setAbaAtiva("admin")}>Administração</button>}
       </nav>
 
@@ -423,7 +434,8 @@ export default function App() {
           </section>
         )}
 
-        {abaAtiva === "pedidos" && (
+        {/* Aba "Itens Pedidos" só aparece se NÃO for o admin */}
+        {abaAtiva === "pedidos" && showPedidosTab && (
           <section className="card">
             <h3>Itens Pedidos para {usuarioAtual}</h3>
             {pedidosParaMinhaLoja.length === 0 ? (
@@ -565,6 +577,7 @@ export default function App() {
           </div>
         </div>
       )}
+
       {notificacao && (
         <div className={`toast ${notificacao.tipo}`}>
           {notificacao.msg}
