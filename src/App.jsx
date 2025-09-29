@@ -502,7 +502,7 @@ export default function App() {
         )}
       </main>
 
-      {/* Modal Histórico de enviados */}
+      {/* Modal Histórico de enviados com scroll */}
       {showHistorico && (
         <div
           style={{
@@ -526,45 +526,55 @@ export default function App() {
               padding: 24,
               minWidth: 320,
               maxWidth: 440,
+              maxHeight: "80vh", // Altura máxima do modal
               boxShadow: "0 2px 14px rgba(0,0,0,0.18)",
-              position: "relative"
+              position: "relative",
+              display: "flex",
+              flexDirection: "column"
             }}
             onClick={e => e.stopPropagation()}
           >
             <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 10 }}>Histórico de itens enviados</div>
-            {historicoEnviados.length === 0 ? (
-              <div style={{ color: "#666" }}>Nenhum item enviado por esta loja.</div>
-            ) : (
-              <div>
-                {historicoEnviados.map(p => (
-                  <div key={p.id} style={{
-                    border: "1px solid #eee",
-                    borderRadius: 5,
-                    padding: 10,
-                    marginBottom: 12,
-                    fontSize: 15,
-                    background: "#f7fbff",
-                    position: "relative"
-                  }}>
-                    <div style={{ fontWeight: 600 }}>{p.descricao}</div>
-                    <div style={{ fontSize: 13 }}>Ref: {p.referencia}</div>
-                    <div style={{ fontSize: 13 }}>Cód: {p.codigoBarra}</div>
-                    <div style={{ fontSize: 12, color: "#888" }}>Destinatário: {p.destinatario}</div>
-                    <div style={{ fontSize: 12, color: "#888" }}>Data: {new Date(p.data).toLocaleString()}</div>
-                    <div style={{ marginTop: 3 }}>
-                      <Barcode value={String(p.codigoBarra)} height={28} width={1.2} fontSize={11} />
+            <div style={{
+              flex: 1,
+              overflowY: "auto",
+              maxHeight: "52vh", // Altura máxima para a lista, ajustável
+              marginBottom: 8
+            }}>
+              {historicoEnviados.length === 0 ? (
+                <div style={{ color: "#666" }}>Nenhum item enviado por esta loja.</div>
+              ) : (
+                <div>
+                  {historicoEnviados.map(p => (
+                    <div key={p.id} style={{
+                      border: "1px solid #eee",
+                      borderRadius: 5,
+                      padding: 10,
+                      marginBottom: 12,
+                      fontSize: 15,
+                      background: "#f7fbff",
+                      position: "relative"
+                    }}>
+                      <div style={{ fontWeight: 600 }}>{p.descricao}</div>
+                      <div style={{ fontSize: 13 }}>Ref: {p.referencia}</div>
+                      <div style={{ fontSize: 13 }}>Cód: {p.codigoBarra}</div>
+                      <div style={{ fontSize: 12, color: "#888" }}>Destinatário: {p.destinatario}</div>
+                      <div style={{ fontSize: 12, color: "#888" }}>Data: {new Date(p.data).toLocaleString()}</div>
+                      <div style={{ marginTop: 3 }}>
+                        <Barcode value={String(p.codigoBarra)} height={28} width={1.2} fontSize={11} />
+                      </div>
+                      <button
+                        className="btn danger"
+                        style={{ position: "absolute", right: 10, top: 10, fontSize: 12, padding: "2px 7px" }}
+                        onClick={() => excluirEnviado(p.id)}
+                      >
+                        Excluir
+                      </button>
                     </div>
-                    <button
-                      className="btn danger"
-                      style={{ position: "absolute", right: 10, top: 10, fontSize: 12, padding: "2px 7px" }}
-                      onClick={() => excluirEnviado(p.id)}
-                    >
-                      Excluir
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
             <button
               className="btn"
               style={{ marginTop: 10, width: "100%" }}
