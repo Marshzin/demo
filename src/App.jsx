@@ -3,6 +3,11 @@ import * as XLSX from "xlsx";
 import Barcode from "react-barcode";
 import "./styles.css";
 
+/*
+  Usuarios / lojas:
+  - Senha padrão: 1234
+  - Senha admin: demo1234
+*/
 const ACCOUNTS = [
   { usuario: "NovoShopping", loja: "NovoShopping", isAdmin: false },
   { usuario: "RibeiraoShopping", loja: "RibeiraoShopping", isAdmin: false },
@@ -15,14 +20,21 @@ const SENHA_PADRAO = "1234";
 const SENHA_ADMIN = "demo1234";
 const LOJAS = ["NovoShopping", "RibeiraoShopping", "DomPedro", "Iguatemi"];
 const LS_PEDIDOS_KEY = "pedidosERP_v1";
+const LOGO_URL = "/logo.jpeg"; // ajuste se necessário
 
 export default function App() {
+  // Auth
   const [logado, setLogado] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [usuarioAtual, setUsuarioAtual] = useState(null);
 
+  // UI / tabs
   const [abaAtiva, setAbaAtiva] = useState("transferencia"); // transferencia | pedidos | admin
+
+  // itens carregados do xls
   const [catalogo, setCatalogo] = useState([]);
+
+  // pedidos armazenados (array)
   const [pedidos, setPedidos] = useState(() => {
     try {
       const raw = localStorage.getItem(LS_PEDIDOS_KEY);
@@ -32,17 +44,22 @@ export default function App() {
     }
   });
 
+  // transferencia inputs
   const [destinatario, setDestinatario] = useState(LOJAS[0]);
   const [vendedor, setVendedor] = useState("");
   const [manualCodigo, setManualCodigo] = useState("");
 
+  // admin view select
   const [lojaSelecionada, setLojaSelecionada] = useState(LOJAS[0]);
 
+  // notificacao {msg, tipo: 'sucesso'|'erro'} ou null
   const [notificacao, setNotificacao] = useState(null);
 
+  // scanner buffer refs
   const scannerBuffer = useRef("");
   const scannerTimeout = useRef(null);
 
+  // load itens.xls on mount
   useEffect(() => {
     fetch("/itens.xls")
       .then((res) => res.arrayBuffer())
@@ -52,6 +69,7 @@ export default function App() {
         const sheet = workbook.Sheets[sheetName];
         const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
 
+        // normalize rows -> catalogo entries
         const list = rows.map((row, idx) => {
           const codigoProduto = String(row["Código Produto"] ?? "").trim();
           const cbRaw = String(row["Códigos de Barras"] ?? "");
@@ -59,7 +77,8 @@ export default function App() {
             .split("|")
             .map((c) => c.trim())
             .filter((c) => c.length > 0)
-            .map((c) => c.replace(/[^\dA-Za-z]/g, "").trim());
+            .map((c) => c.replace(/[^\dA-Za-z]/g, "").trim()); // normalize
+          // choose principal (longest) if exists
           const codigoBarra = codigosBarras.length > 0 ? [...codigosBarras].sort((a, b) => b.length - a.length)[0] : codigoProduto;
           const descricao = String(row["Descrição Completa"] ?? "Sem descrição").trim();
           const referencia = String(row["Referência"] ?? "").trim();
@@ -82,6 +101,7 @@ export default function App() {
       });
   }, []);
 
+  // persist pedidos
   useEffect(() => {
     try {
       localStorage.setItem(LS_PEDIDOS_KEY, JSON.stringify(pedidos));
@@ -90,13 +110,19 @@ export default function App() {
     }
   }, [pedidos]);
 
+  // -------- scanner global listener (keyboard-emulating scanners) ----------
   useEffect(() => {
     const onKeyDown = (e) => {
+      // ignore certain modifier-only events
+      if (e.key === "Shift" || e.key === "Control" || e.key === "Alt" || e.key === "Meta") return;
+
+      // If focused element is text input, still capture: scanner usually sends to focused input but global capture ensures it works.
       if (e.key === "Enter") {
         const code = scannerBuffer.current.trim();
         if (code.length > 0) {
           processarCodigo(code);
         } else {
+          // fallback: if manual input field has value and Enter pressed (user typed), process it
           const manualEl = document.getElementById("manualCodigoInput");
           const manualVal = manualEl ? (manualEl.value || "").trim() : "";
           if (manualVal) processarCodigo(manualVal);
@@ -108,6 +134,7 @@ export default function App() {
         }
       } else if (e.key.length === 1) {
         scannerBuffer.current += e.key;
+        // clear buffer quickly after inactivity — scanners send fast
         if (scannerTimeout.current) clearTimeout(scannerTimeout.current);
         scannerTimeout.current = setTimeout(() => {
           scannerBuffer.current = "";
@@ -118,8 +145,10 @@ export default function App() {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catalogo, destinatario, vendedor, usuarioAtual, pedidos]);
 
+  // manual input handler (Enter)
   const onManualKeyDown = (e) => {
     if (e.key === "Enter") {
       const v = (e.target.value || "").trim();
@@ -130,10 +159,12 @@ export default function App() {
     }
   };
 
+  // processa código (scanner ou manual)
   const processarCodigo = (valorOriginal) => {
     const valor = String(valorOriginal || "").replace(/[^\w\d]/g, "").trim().toLowerCase();
     if (!valor) return;
 
+    // validations
     if (!usuarioAtual) {
       showNotificacao("Faça login primeiro.", "erro");
       return;
@@ -142,14 +173,18 @@ export default function App() {
       showNotificacao("Selecione o destinatário (a loja que pediu).", "erro");
       return;
     }
-
-    const itemJaTransferido = pedidos.some((pedido) => pedido.codigoProduto === valor && pedido.destinatario === destinatario);
-    if (itemJaTransferido) {
-      showNotificacao("Este item já foi transferido para o destinatário.", "erro");
+    if (!vendedor || !vendedor.trim()) {
+      showNotificacao("Informe o nome do vendedor.", "erro");
+      return;
+    }
+    if (destinatario === usuarioAtual) {
+      showNotificacao("Destinatário não pode ser sua própria loja.", "erro");
       return;
     }
 
+    // lookup: codigoProduto, codigoBarra principal, any codigosBarras, referencia
     let encontrado = catalogo.find((it) => {
+      if (!it) return false;
       if ((it.codigoProduto || "").toLowerCase() === valor) return true;
       if ((it.codigoBarra || "").toLowerCase() === valor) return true;
       if ((it.referencia || "").toLowerCase() === valor) return true;
@@ -159,6 +194,7 @@ export default function App() {
       return false;
     });
 
+    // try partial match by ending (some scanners trim leading zeros)
     if (!encontrado) {
       encontrado = catalogo.find((it) => it.codigosBarras && it.codigosBarras.some((cb) => cb.toLowerCase().endsWith(valor)));
     }
@@ -168,6 +204,7 @@ export default function App() {
       return;
     }
 
+    // criar pedido: destinatario = loja que pediu (vai ver na aba dela)
     const novoPedido = {
       id: Date.now().toString() + "-" + Math.random().toString(36).slice(2, 9),
       itemId: encontrado.id,
@@ -176,8 +213,9 @@ export default function App() {
       codigosBarras: encontrado.codigosBarras,
       descricao: encontrado.descricao,
       referencia: encontrado.referencia,
-      destinatario,
-      vendedor: vendedor.trim() || "Não informado",
+      destinatario, // who asked
+      origem: usuarioAtual, // who scanned (receiving store)
+      vendedor: vendedor.trim(),
       data: new Date().toISOString(),
     };
 
@@ -185,141 +223,252 @@ export default function App() {
     showNotificacao(`Item transferido p/ ${destinatario} — ${encontrado.descricao}`, "sucesso");
   };
 
-  const showNotificacao = (msg, tipo) => {
+  // show notification message (auto hide)
+  const showNotificacao = (msg, tipo = "sucesso") => {
     setNotificacao({ msg, tipo });
-    setTimeout(() => {
-      setNotificacao(null);
-    }, 3000);
+    setTimeout(() => setNotificacao(null), 3200);
   };
 
-  const onLogin = (usuario, senha) => {
-    const usuarioLogado = ACCOUNTS.find(
-      (a) => a.usuario === usuario && (a.isAdmin ? senha === SENHA_ADMIN : senha === SENHA_PADRAO)
-    );
-    if (usuarioLogado) {
-      setUsuarioAtual(usuarioLogado.usuario);
-      setIsAdmin(usuarioLogado.isAdmin);
-      setLogado(true);
-    } else {
-      showNotificacao("Usuário ou senha incorretos", "erro");
+  // auth login handler
+  const handleLogin = (usuario, senha) => {
+    const acc = ACCOUNTS.find((a) => a.usuario === usuario);
+    if (!acc) {
+      showNotificacao("Usuário inválido", "erro");
+      return;
     }
+    const ok = acc.isAdmin ? senha === SENHA_ADMIN : senha === SENHA_PADRAO;
+    if (!ok) {
+      showNotificacao("Senha incorreta", "erro");
+      return;
+    }
+    setUsuarioAtual(acc.usuario);
+    setIsAdmin(!!acc.isAdmin);
+    setLogado(true);
+
+    // set default destinatario to first shop != usuarioAtual
+    const firstOther = LOJAS.find((l) => l !== acc.usuario);
+    setDestinatario(firstOther || "");
   };
 
-  return (
-    <div className="App">
-      <header className="header">
-        <h1>Sistema de Transferências ERP</h1>
-      </header>
-      {logado ? (
-        <>
-          <div className="nav">
-            <button onClick={() => setAbaAtiva("transferencia")}>Transferência</button>
-            <button onClick={() => setAbaAtiva("pedidos")}>Pedidos</button>
-            {isAdmin && <button onClick={() => setAbaAtiva("admin")}>Admin</button>}
+  const handleLogout = () => {
+    setLogado(false);
+    setIsAdmin(false);
+    setUsuarioAtual(null);
+    setAbaAtiva("transferencia");
+    setVendedor("");
+    setManualCodigo("");
+  };
+
+  // admin: delete individual pedido
+  const adminExcluir = (id) => {
+    if (!window.confirm("Excluir este pedido?")) return;
+    setPedidos((old) => old.filter((p) => p.id !== id));
+  };
+
+  // admin: delete all requests for selected loja (requests made FOR that loja)
+  const adminExcluirTodosDaLoja = (loja) => {
+    if (!window.confirm(`Excluir TODOS os pedidos destinados a ${loja}?`)) return;
+    setPedidos((old) => old.filter((p) => p.destinatario !== loja));
+  };
+
+  // pedidos que deverão aparecer na aba "Itens Pedidos" da loja logada:
+  const pedidosParaMinhaLoja = pedidos.filter((p) => p.destinatario === usuarioAtual);
+
+  // pedidos feitos pela loja X? In admin we will show pedidos where 'origem' === loja (if you want). 
+  // The spec wanted admin to see requests of each loja — that'll be pedidos.filter(p => p.origem === loja) OR pedidos.filter(p => p.destinatario === loja)
+  // We'll show pedidos where origem === loja (i.e., requests made BY that loja). Admin select shows both: "Pedidos feitos por" (origem) and/or destined? We'll show pedidos where origem === loja (who requested).
+  const pedidosFeitosPorLoja = (loja) => pedidos.filter((p) => p.origem === loja);
+
+  // UI: login screen
+  if (!logado) {
+    return (
+      <div className="erp-root">
+        <div className="login-card">
+          <img src={LOGO_URL} alt="logo" className="login-logo" />
+          <h1 className="login-title">Transferência de Produtos</h1>
+
+          <div className="login-row">
+            <select id="loginSelect" defaultValue={ACCOUNTS[0].usuario} className="login-select" onChange={(e) => setUsuarioAtual(e.target.value)}>
+              {ACCOUNTS.map((a) => (
+                <option key={a.usuario} value={a.usuario}>
+                  {a.usuario}
+                </option>
+              ))}
+            </select>
           </div>
 
-          {abaAtiva === "transferencia" && (
-            <div className="container">
-              <h2>Transferir Produto</h2>
-              <form>
-                <div className="form-row">
-                  <label>Destinatário:</label>
-                  <select value={destinatario} onChange={(e) => setDestinatario(e.target.value)}>
-                    {LOJAS.map((loja) => (
-                      <option key={loja} value={loja}>
-                        {loja}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+          <div className="login-row">
+            <input
+              type="password"
+              placeholder="Senha"
+              className="login-input"
+              value={manualCodigo}
+              onChange={(e) => setManualCodigo(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  // login action uses usuarioAtual (default from select)
+                  handleLogin(document.getElementById("loginSelect").value, manualCodigo);
+                  setManualCodigo("");
+                }
+              }}
+            />
+          </div>
 
-                <div className="form-row">
-                  <label>Vendedor:</label>
-                  <input
-                    type="text"
-                    value={vendedor}
-                    onChange={(e) => setVendedor(e.target.value)}
-                    placeholder="Digite o nome do vendedor"
-                  />
-                </div>
+          <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
+            <button
+              className="btn primary"
+              onClick={() => {
+                const sel = document.getElementById("loginSelect").value;
+                handleLogin(sel, manualCodigo);
+                setManualCodigo("");
+              }}
+            >
+              Entrar
+            </button>
+            <button
+              className="btn"
+              onClick={() => {
+                // quick hint of available logins (optional)
+                alert("Logins: NovoShopping, RibeiraoShopping, DomPedro, Iguatemi (senha 1234). Admin: Administrador (senha demo1234).");
+              }}
+            >
+              Ajuda
+            </button>
+          </div>
 
-                <div className="form-row">
-                  <label>Código Produto:</label>
-                  <input
-                    type="text"
-                    id="manualCodigoInput"
-                    value={manualCodigo}
-                    onChange={(e) => setManualCodigo(e.target.value)}
-                    onKeyDown={onManualKeyDown}
-                    placeholder="Escaneie ou digite o código"
-                  />
-                </div>
-              </form>
+          {notificacao && (
+            <div className={`notif ${notificacao.tipo}`}>
+              {notificacao.msg}
             </div>
           )}
-
-          {abaAtiva === "pedidos" && (
-            <div className="container">
-              <h2>Pedidos Realizados</h2>
-              <ul className="list">
-                {pedidos.map((pedido, idx) => (
-                  <li key={idx}>
-                    {pedido.descricao} - {pedido.destinatario}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {abaAtiva === "admin" && isAdmin && (
-            <div className="container">
-              <h2>Admin: Gerenciar Pedidos</h2>
-              <div>
-                <label>Selecione a Loja:</label>
-                <select
-                  value={lojaSelecionada}
-                  onChange={(e) => setLojaSelecionada(e.target.value)}
-                >
-                  {LOJAS.map((loja) => (
-                    <option key={loja} value={loja}>
-                      {loja}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <ul className="list">
-                {pedidos
-                  .filter((pedido) => pedido.destinatario === lojaSelecionada)
-                  .map((pedido, idx) => (
-                    <li key={idx}>
-                      {pedido.descricao} - {pedido.vendedor || "Não informado"}{" "}
-                      <Barcode value={pedido.codigoProduto} />
-                    </li>
-                  ))}
-              </ul>
-            </div>
-          )}
-        </>
-      ) : (
-        <div className="login">
-          <h2>Faça login</h2>
-          <input
-            type="text"
-            placeholder="Usuário"
-            onChange={(e) => setUsuarioAtual(e.target.value)}
-          />
-          <input
-            type="password"
-            placeholder="Senha"
-            onChange={(e) => setUsuarioAtual(e.target.value)}
-          />
-          <button onClick={() => onLogin(usuarioAtual)}>Entrar</button>
         </div>
-      )}
+      </div>
+    );
+  }
 
-      {/* Notificação */}
+  // MAIN ERP PANEL
+  return (
+    <div className="erp-root">
+      <header className="erp-header">
+        <div className="erp-left">
+          <img src={LOGO_URL} alt="logo" className="erp-logo" />
+          <div>
+            <div className="erp-title">Democrata - Transferência por Código ou Referência</div>
+            <div className="erp-sub">Painel de Transferência</div>
+          </div>
+        </div>
+
+        <div className="erp-right">
+          <div className="erp-user">{usuarioAtual}</div>
+          <button className="btn danger" onClick={handleLogout}>
+            Sair
+          </button>
+        </div>
+      </header>
+
+      <nav className="erp-tabs">
+        <button className={abaAtiva === "transferencia" ? "tab active" : "tab"} onClick={() => setAbaAtiva("transferencia")}>Transferência</button>
+        <button className={abaAtiva === "pedidos" ? "tab active" : "tab"} onClick={() => setAbaAtiva("pedidos")}>Itens Pedidos</button>
+        {isAdmin && <button className={abaAtiva === "admin" ? "tab active" : "tab"} onClick={() => setAbaAtiva("admin")}>Administração</button>}
+      </nav>
+
+      <main className="erp-main">
+        {abaAtiva === "transferencia" && (
+          <section className="card">
+            <h3>Registrar / Bipar Item</h3>
+
+            <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 12 }}>
+              <label style={{ fontWeight: 700 }}>Destinatário (quem pediu):</label>
+              <select value={destinatario} onChange={(e) => setDestinatario(e.target.value)} className="erpf-select">
+                <option value="">-- selecione --</option>
+                {LOJAS.filter((l) => l !== usuarioAtual).map((l) => <option key={l} value={l}>{l}</option>)}
+              </select>
+
+              <label style={{ fontWeight: 700 }}>Vendedor:</label>
+              <input value={vendedor} onChange={(e) => setVendedor(e.target.value)} className="erpf-input" placeholder="Nome do vendedor" />
+            </div>
+
+            <div style={{ marginTop: 8 }}>
+              <input
+                id="manualCodigoInput"
+                value={manualCodigo}
+                onChange={(e) => { setManualCodigo(e.target.value); }}
+                onKeyDown={onManualKeyDown}
+                placeholder="Aproxime o leitor de código ou digite o código e pressione Enter"
+                className="erpf-input large"
+                autoFocus
+              />
+              <div style={{ color: "#666", marginTop: 8, fontSize: 13 }}>Ao bipar o código, o item será registrado automaticamente para o destinatário selecionado.</div>
+            </div>
+          </section>
+        )}
+
+        {abaAtiva === "pedidos" && (
+          <section className="card">
+            <h3>Itens Pedidos para {usuarioAtual}</h3>
+            {pedidosParaMinhaLoja.length === 0 ? (
+              <p style={{ color: "#666" }}>Nenhum item registrado para sua loja.</p>
+            ) : (
+              <div className="grid">
+                {pedidosParaMinhaLoja.map((p) => (
+                  <div className="grid-card" key={p.id}>
+                    <div className="grid-card-title">{p.descricao}</div>
+                    <div className="grid-card-sub">Ref: {p.referencia}</div>
+                    <div className="grid-card-sub">Cód: {p.codigoBarra}</div>
+                    <div className="grid-card-sub">Vendedor: {p.vendedor}</div>
+                    <div className="grid-card-sub small">Registrado por: {p.origem} • {new Date(p.data).toLocaleString()}</div>
+                    <div style={{ marginTop: 6 }}><Barcode value={String(p.codigoBarra)} height={40} width={1.4} /></div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {abaAtiva === "admin" && isAdmin && (
+          <section className="card">
+            <h3>Administração</h3>
+
+            <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
+              <label style={{ fontWeight: 700 }}>Ver pedidos feitos por:</label>
+              <select value={lojaSelecionada} onChange={(e) => setLojaSelecionada(e.target.value)} className="erpf-select">
+                {LOJAS.map((l) => <option key={l} value={l}>{l}</option>)}
+              </select>
+              <button className="btn danger" onClick={() => adminExcluirTodosDaLoja(lojaSelecionada)}>Excluir todos os pedidos feitos por {lojaSelecionada}</button>
+            </div>
+
+            <div>
+              {pedidosFeitosPorLoja(lojaSelecionada).length === 0 ? (
+                <p style={{ color: "#666" }}>Nenhum pedido registrado por {lojaSelecionada}.</p>
+              ) : (
+                <div className="grid">
+                  {pedidosFeitosPorLoja(lojaSelecionada).map((p) => (
+                    <div className="grid-card" key={p.id}>
+                      <div className="grid-card-title">{p.descricao}</div>
+                      <div className="grid-card-sub">Ref: {p.referencia}</div>
+                      <div className="grid-card-sub">Cód: {p.codigoBarra}</div>
+                      <div className="grid-card-sub">Destinatário: {p.destinatario}</div>
+                      <div className="grid-card-sub small">Vendedor: {p.vendedor} • {new Date(p.data).toLocaleString()}</div>
+                      <div style={{ marginTop: 8 }}>
+                        <Barcode value={String(p.codigoBarra)} height={40} width={1.4} />
+                      </div>
+                      <div style={{ marginTop: 8 }}>
+                        <button className="btn danger" onClick={() => adminExcluir(p.id)}>Excluir</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+      </main>
+
+      {/* notificacao bottom-right */}
       {notificacao && (
-        <div className={`notificacao ${notificacao.tipo}`}>{notificacao.msg}</div>
+        <div className={`toast ${notificacao.tipo}`}>
+          {notificacao.msg}
+        </div>
       )}
     </div>
   );
