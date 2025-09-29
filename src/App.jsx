@@ -11,22 +11,19 @@ const logins = [
   { usuario: "Administrador", senha: "demo1234", isAdmin: true },
 ];
 
-const lojas = ["NovoShopping", "RibeiraoShopping", "DomPedro", "Iguatemi"];
-
 export default function App() {
   const [usuario, setUsuario] = useState("");
   const [senha, setSenha] = useState("");
   const [logado, setLogado] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [abaAtiva, setAbaAtiva] = useState("transferencia");
   const [destinatario, setDestinatario] = useState("");
-  const [vendedor, setVendedor] = useState("");
+  const [pedidos, setPedidos] = useState({});
+  const [itens, setItens] = useState([]);
   const [codigoBarras, setCodigoBarras] = useState("");
-  const [produtos, setProdutos] = useState([]);
-  const [pedidos, setPedidos] = useState([]);
-  const [lojaSelecionada, setLojaSelecionada] = useState(lojas[0]);
+  const [vendedor, setVendedor] = useState("");
   const [notificacao, setNotificacao] = useState("");
 
+  // Carrega XLS
   useEffect(() => {
     fetch("/itens.xls")
       .then((res) => res.arrayBuffer())
@@ -34,65 +31,74 @@ export default function App() {
         const workbook = XLSX.read(data, { type: "array" });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const json = XLSX.utils.sheet_to_json(sheet);
-        setProdutos(json);
+        setItens(json);
       });
   }, []);
 
+  // Login
   const handleLogin = () => {
     const user = logins.find((l) => l.usuario === usuario && l.senha === senha);
     if (user) {
       setLogado(true);
       setIsAdmin(user.isAdmin);
     } else {
-      alert("Usuário ou senha incorretos");
+      setNotificacao("❌ Usuário ou senha inválidos!");
+      setTimeout(() => setNotificacao(""), 3000);
     }
   };
 
+  // BIP automático
   const handleBip = (e) => {
-    if (e.key === "Enter" && codigoBarras.trim() !== "") {
-      if (!destinatario) {
-        alert("Selecione o destinatário!");
-        return;
-      }
-      if (!vendedor.trim()) {
-        alert("Informe o vendedor!");
-        return;
-      }
-      const produto = produtos.find(
-        (p) =>
-          String(p["Códigos de Barras"]).trim() === codigoBarras.trim()
+    if (e.key === "Enter" && codigoBarras.trim() !== "" && destinatario && vendedor) {
+      const item = itens.find(
+        (i) => String(i.codigo) === codigoBarras || String(i.barras) === codigoBarras
       );
-      if (produto) {
+      if (item) {
         const novoPedido = {
-          id: Date.now(),
-          codigoBarra: produto["Códigos de Barras"],
-          referencia: produto["Referência"],
-          nomeItem: produto["Descrição Completa"],
-          destinatario,
+          ...item,
           vendedor,
+          data: new Date().toLocaleString(),
         };
-        setPedidos((old) => [...old, novoPedido]);
-        setCodigoBarras("");
-        setNotificacao(`Item transferido com sucesso para ${destinatario}`);
-        setTimeout(() => setNotificacao(""), 3000);
+        setPedidos((prev) => ({
+          ...prev,
+          [destinatario]: [...(prev[destinatario] || []), novoPedido],
+        }));
+        setNotificacao(`✅ Item transferido para ${destinatario}`);
       } else {
-        alert("Produto não encontrado no cadastro!");
+        setNotificacao("❌ Produto não encontrado no estoque!");
       }
+      setCodigoBarras("");
+      setTimeout(() => setNotificacao(""), 3000);
     }
   };
 
+  // Excluir pedido (admin)
+  const excluirPedido = (loja, index) => {
+    setPedidos((prev) => {
+      const novos = { ...prev };
+      novos[loja].splice(index, 1);
+      return { ...novos };
+    });
+  };
+
+  // Logout
+  const handleLogout = () => {
+    setLogado(false);
+    setUsuario("");
+    setSenha("");
+    setDestinatario("");
+    setVendedor("");
+  };
+
+  // Tela de login
   if (!logado) {
     return (
       <div style={styles.loginContainer}>
-        <h2 style={{ marginBottom: 20 }}>Transferência de Produtos</h2>
-        <select
-          value={usuario}
-          onChange={(e) => setUsuario(e.target.value)}
-          style={styles.input}
-        >
-          <option value="">Selecione a loja</option>
-          {logins.map((l) => (
-            <option key={l.usuario} value={l.usuario}>
+        <h2>Transferência de Produtos</h2>
+        <select value={usuario} onChange={(e) => setUsuario(e.target.value)} style={styles.input}>
+          <option value="">Selecione a Loja</option>
+          {logins.map((l, i) => (
+            <option key={i} value={l.usuario}>
               {l.usuario}
             </option>
           ))}
@@ -107,137 +113,95 @@ export default function App() {
         <button onClick={handleLogin} style={styles.button}>
           Entrar
         </button>
+        {notificacao && <div className={`popup ${notificacao.includes("❌") ? "erro" : "sucesso"}`}>{notificacao}</div>}
       </div>
     );
   }
 
+  // Painel
   return (
-    <div style={styles.app}>
-      <h1 style={{ marginBottom: 20 }}>Painel de Transferência</h1>
-      {!isAdmin && (
-        <>
-          <div style={styles.section}>
-            <label>Destinatário:</label>
-            <select
-              value={destinatario}
-              onChange={(e) => setDestinatario(e.target.value)}
-              style={styles.input}
-            >
-              <option value="">Selecione</option>
-              {lojas
-                .filter((l) => l !== usuario)
-                .map((l) => (
-                  <option key={l} value={l}>
-                    {l}
-                  </option>
+    <div style={styles.container}>
+      <h2>Painel de Transferência - {usuario}</h2>
+      <button onClick={handleLogout} style={styles.logout}>
+        Sair
+      </button>
+
+      {isAdmin ? (
+        <div>
+          <h3>Administração - Pedidos</h3>
+          {Object.keys(pedidos).map((loja) => (
+            <div key={loja}>
+              <h4>{loja}</h4>
+              <ul>
+                {pedidos[loja].map((p, i) => (
+                  <li key={i}>
+                    {p.nome} - {p.codigo} - {p.data} - Vendedor: {p.vendedor}
+                    <button
+                      onClick={() => excluirPedido(loja, i)}
+                      style={styles.deleteButton}
+                    >
+                      Excluir
+                    </button>
+                  </li>
                 ))}
-            </select>
-          </div>
-
-          <div style={styles.section}>
-            <label>Vendedor:</label>
-            <input
-              type="text"
-              placeholder="Digite o nome do vendedor"
-              value={vendedor}
-              onChange={(e) => setVendedor(e.target.value)}
-              style={styles.input}
-              required
-            />
-          </div>
-
-          <div style={styles.section}>
-            <label>Bipar Código de Barras:</label>
-            <input
-              type="text"
-              value={codigoBarras}
-              onChange={(e) => setCodigoBarras(e.target.value)}
-              onKeyDown={handleBip}
-              style={styles.input}
-              autoFocus
-            />
-          </div>
-
-          <h2>Itens Pedidos</h2>
-          <div style={styles.grid}>
-            {pedidos
-              .filter((p) => p.destinatario === usuario)
-              .map((p) => (
-                <div key={p.id} style={styles.card}>
-                  <h4>{p.nomeItem}</h4>
-                  <p><b>Referência:</b> {p.referencia}</p>
-                  <p><b>Cód. Barras:</b> {p.codigoBarra}</p>
-                  <p><b>Vendedor:</b> {p.vendedor}</p>
-                  <Barcode value={String(p.codigoBarra)} height={40} width={1.5} />
-                </div>
-              ))}
-          </div>
-        </>
-      )}
-
-      {isAdmin && (
-        <>
-          <h2>Administração</h2>
-          <div style={styles.section}>
-            <label>Selecionar Loja:</label>
-            <select
-              value={lojaSelecionada}
-              onChange={(e) => setLojaSelecionada(e.target.value)}
-              style={styles.input}
-            >
-              {lojas.map((l) => (
-                <option key={l} value={l}>
-                  {l}
+              </ul>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div>
+          <label>Destinatário:</label>
+          <select
+            value={destinatario}
+            onChange={(e) => setDestinatario(e.target.value)}
+            style={styles.input}
+          >
+            <option value="">Selecione o Destinatário</option>
+            {logins
+              .filter((l) => l.usuario !== usuario && !l.isAdmin)
+              .map((l, i) => (
+                <option key={i} value={l.usuario}>
+                  {l.usuario}
                 </option>
               ))}
-            </select>
-          </div>
-          <div style={styles.grid}>
-            {pedidos
-              .filter((p) => p.destinatario === lojaSelecionada)
-              .map((p) => (
-                <div key={p.id} style={styles.card}>
-                  <h4>{p.nomeItem}</h4>
-                  <p><b>Referência:</b> {p.referencia}</p>
-                  <p><b>Cód. Barras:</b> {p.codigoBarra}</p>
-                  <p><b>Destinatário:</b> {p.destinatario}</p>
-                  <p><b>Vendedor:</b> {p.vendedor}</p>
-                  <Barcode value={String(p.codigoBarra)} height={40} width={1.5} />
-                  <button
-                    style={{ ...styles.button, background: "#c0392b", marginTop: 10 }}
-                    onClick={() =>
-                      setPedidos((old) => old.filter((item) => item.id !== p.id))
-                    }
-                  >
-                    Excluir
-                  </button>
-                </div>
-              ))}
-          </div>
-          {pedidos.filter((p) => p.destinatario === lojaSelecionada).length > 0 && (
-            <button
-              onClick={() =>
-                setPedidos((old) => old.filter((p) => p.destinatario !== lojaSelecionada))
-              }
-              style={{ ...styles.button, background: "#e74c3c", marginTop: 20 }}
-            >
-              Excluir todos os pedidos da loja
-            </button>
-          )}
-        </>
-      )}
+          </select>
 
-      {notificacao && (
-        <div style={styles.notificacao}>
-          {notificacao}
+          <input
+            type="text"
+            placeholder="Nome do Vendedor"
+            value={vendedor}
+            onChange={(e) => setVendedor(e.target.value)}
+            style={styles.input}
+          />
+
+          <input
+            type="text"
+            placeholder="Bipar código de barras"
+            value={codigoBarras}
+            onChange={(e) => setCodigoBarras(e.target.value)}
+            onKeyDown={handleBip}
+            style={styles.input}
+          />
+
+          <h3>Itens Pedidos</h3>
+          <ul>
+            {(pedidos[usuario] || []).map((p, i) => (
+              <li key={i}>
+                {p.nome} - {p.codigo} - {p.data} - Vendedor: {p.vendedor}
+                <Barcode value={String(p.codigo)} height={30} />
+              </li>
+            ))}
+          </ul>
         </div>
       )}
+
+      {notificacao && <div className={`popup ${notificacao.includes("❌") ? "erro" : "sucesso"}`}>{notificacao}</div>}
     </div>
   );
 }
 
 const styles = {
-  app: { padding: 20, fontFamily: "Arial, sans-serif" },
+  container: { padding: 20, fontFamily: "Arial" },
   loginContainer: {
     display: "flex",
     flexDirection: "column",
@@ -249,44 +213,31 @@ const styles = {
     borderRadius: 8,
     textAlign: "center",
   },
-  input: {
-    padding: 10,
-    borderRadius: 6,
-    border: "1px solid #ccc",
-    fontSize: 16,
-    width: "100%",
-  },
+  input: { padding: 10, borderRadius: 5, border: "1px solid #ccc" },
   button: {
     padding: 10,
-    borderRadius: 6,
+    borderRadius: 5,
     border: "none",
-    background: "#27ae60",
+    background: "#3498db",
     color: "#fff",
     cursor: "pointer",
-    fontSize: 16,
   },
-  section: { marginBottom: 20 },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-    gap: 16,
-  },
-  card: {
-    border: "1px solid #ccc",
-    padding: 12,
-    borderRadius: 8,
-    background: "#fafafa",
-  },
-  notificacao: {
-    position: "fixed",
-    top: 20,
-    right: 20,
-    background: "#2ecc71",
+  logout: {
+    padding: "6px 12px",
+    marginBottom: 15,
+    border: "none",
+    background: "#e74c3c",
     color: "#fff",
-    padding: "12px 20px",
-    borderRadius: 8,
-    fontWeight: "600",
-    boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
-    zIndex: 1000,
+    borderRadius: 5,
+    cursor: "pointer",
+  },
+  deleteButton: {
+    marginLeft: 10,
+    padding: "2px 6px",
+    border: "none",
+    background: "#e74c3c",
+    color: "#fff",
+    borderRadius: 4,
+    cursor: "pointer",
   },
 };
