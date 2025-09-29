@@ -5,8 +5,11 @@ import "./styles.css";
 
 /*
   Usuarios / lojas:
-  - Senha padrão: 1234
-  - Senha admin: demo1234
+  - NovoShopping: 123
+  - RibeiraoShopping: 000
+  - DomPedro: 456
+  - Iguatemi: 789
+  - Adminstrador: demo1234
 */
 const ACCOUNTS = [
   { usuario: "NovoShopping", loja: "NovoShopping", isAdmin: false },
@@ -16,8 +19,14 @@ const ACCOUNTS = [
   { usuario: "Administrador", loja: "Administrador", isAdmin: true },
 ];
 
-const SENHA_PADRAO = "1234";
-const SENHA_ADMIN = "demo1234";
+const SENHAS_LOJAS = {
+  NovoShopping: "123",
+  RibeiraoShopping: "000",
+  DomPedro: "456",
+  Iguatemi: "789",
+  Administrador: "demo1234"
+};
+
 const LOJAS = ["NovoShopping", "RibeiraoShopping", "DomPedro", "Iguatemi"];
 const LS_PEDIDOS_KEY = "pedidosERP_v1";
 const LOGO_URL = "/logo.jpeg"; // ajuste se necessário
@@ -217,7 +226,7 @@ export default function App() {
       destinatario,
       remetente: remetenteValidado,
       origem: remetenteValidado,
-      vendedor: "",
+      vendedor: vendedor.trim(),
       data: new Date().toISOString(),
     };
 
@@ -236,7 +245,8 @@ export default function App() {
       showNotificacao("Usuário inválido", "erro");
       return;
     }
-    const ok = acc.isAdmin ? senha === SENHA_ADMIN : senha === SENHA_PADRAO;
+    const senhaCorreta = SENHAS_LOJAS[acc.usuario] || "";
+    const ok = senha === senhaCorreta;
     if (!ok) {
       showNotificacao("Senha incorreta", "erro");
       return;
@@ -273,9 +283,6 @@ export default function App() {
 
   // pedidos que deverão aparecer na aba "Itens Pedidos" da loja logada:
   const pedidosParaMinhaLoja = pedidos.filter((p) => p.destinatario === usuarioAtual);
-
-  // pedidos enviados por loja (admin view)
-  // const pedidosEnviadosPorLoja = (loja) => pedidos.filter((p) => p.remetente === loja);
 
   // Histórico de transferências recebidas por loja (admin view)
   const historicoLojaAdmin = (loja) => pedidos.filter((p) => p.destinatario === loja);
@@ -336,7 +343,7 @@ export default function App() {
             <button
               className="btn"
               onClick={() => {
-                alert("Logins: NovoShopping, RibeiraoShopping, DomPedro, Iguatemi (senha 1234). Admin: Administrador (senha demo1234).");
+                alert("Logins: NovoShopping: 123\nRibeiraoShopping: 000\nDomPedro: 456\nIguatemi: 789\nAdministrador: demo1234");
               }}
             >
               Ajuda
@@ -450,7 +457,7 @@ export default function App() {
                     <div className="grid-card-title">{p.descricao}</div>
                     <div className="grid-card-sub">Ref: {p.referencia}</div>
                     <div className="grid-card-sub">Cód: {p.codigoBarra}</div>
-                    <div className="grid-card-sub">Vendedor: {p.vendedor}</div>
+                    <div className="grid-card-sub">Solicitante: {p.vendedor}</div>
                     <div className="grid-card-sub small">Remetente: {p.remetente} • {new Date(p.data).toLocaleString()}</div>
                     <div style={{ marginTop: 6 }}><Barcode value={String(p.codigoBarra)} height={40} width={1.4} /></div>
                   </div>
@@ -555,6 +562,7 @@ export default function App() {
                       <div style={{ fontSize: 13 }}>Ref: {p.referencia}</div>
                       <div style={{ fontSize: 13 }}>Cód: {p.codigoBarra}</div>
                       <div style={{ fontSize: 12, color: "#888" }}>Destinatário: {p.destinatario}</div>
+                      <div style={{ fontSize: 12, color: "#888" }}>Solicitante: {p.vendedor}</div>
                       <div style={{ fontSize: 12, color: "#888" }}>Data: {new Date(p.data).toLocaleString()}</div>
                       <div style={{ marginTop: 3 }}>
                         <Barcode value={String(p.codigoBarra)} height={28} width={1.2} fontSize={11} />
